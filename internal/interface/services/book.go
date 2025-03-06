@@ -2,6 +2,7 @@ package services
 
 import (
 	"github.com/DarrelA/e-lib/internal/apperrors"
+	"github.com/DarrelA/e-lib/internal/application/dto"
 	appSvc "github.com/DarrelA/e-lib/internal/application/services"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/gofiber/fiber/v2"
@@ -17,7 +18,7 @@ func NewBookService(books []entity.BookDetail) appSvc.BookService {
 }
 
 func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
-	title := c.Params("title")
+	title := c.Query("title")
 	if title == "" {
 		err := apperrors.NewBadRequestError(apperrors.ErrMsgSomethingWentWrong)
 		log.Error().Err(err).Msg(apperrors.ErrMsgSomethingWentWrong)
@@ -28,7 +29,12 @@ func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 		return c.Status(err.Status).JSON(err)
 	}
 
-	return c.Status(fiber.StatusOK).JSON(book)
+	response := dto.BookTitleAvailability{
+		Title:           book.Title,
+		AvailableCopies: book.AvailableCopies,
+	}
+
+	return c.Status(fiber.StatusOK).JSON(response)
 }
 
 func (bs *BookService) GetBookByTitle(title string) (*entity.BookDetail, *apperrors.RestErr) {
