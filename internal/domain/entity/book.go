@@ -7,9 +7,9 @@ import (
 )
 
 type BookDetail struct {
-	UUID            *uuid.UUID
-	Title           string
-	AvailableCopies int
-	CreatedAt       time.Time
-	UpdatedAt       time.Time
+	UUID            *uuid.UUID `json:"id"`
+	Title           string     `json:"title"`
+	AvailableCopies int        `json:"available_copies"`
+	CreatedAt       time.Time  `json:"created_at"`
+	UpdatedAt       time.Time  `json:"updated_at"`
 }
