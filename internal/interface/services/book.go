@@ -9,6 +9,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	errMsgEmptyTitle   = "User did not provide title."
+	errMsgBookNotFound = "Book not found."
+)
+
 type BookService struct {
 	Books []entity.BookDetail
 }
@@ -20,8 +25,8 @@ func NewBookService(books []entity.BookDetail) appSvc.BookService {
 func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 	title := c.Query("title")
 	if title == "" {
-		err := apperrors.NewBadRequestError(apperrors.ErrMsgSomethingWentWrong)
-		log.Error().Err(err).Msg(apperrors.ErrMsgSomethingWentWrong)
+		log.Error().Msg(errMsgEmptyTitle)
+		return c.Status(fiber.StatusBadRequest).JSON(errMsgEmptyTitle)
 	}
 
 	book, err := bs.GetBookByTitle(title)
@@ -44,5 +49,5 @@ func (bs *BookService) GetBookByTitle(title string) (*entity.BookDetail, *apperr
 		}
 	}
 
-	return nil, apperrors.NewBadRequestError(apperrors.ErrMsgBookNotFound)
+	return nil, apperrors.NewBadRequestError(errMsgBookNotFound)
 }
