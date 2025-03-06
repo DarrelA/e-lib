@@ -2,12 +2,13 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"os"
 	"time"
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
+	interfaceSvc "github.com/DarrelA/e-lib/internal/interface/services"
+	"github.com/DarrelA/e-lib/internal/interface/transport/rest"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -15,6 +16,14 @@ import (
 
 func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	books := loadJsonData()
+
+	bookService := interfaceSvc.NewBookService(books)
+	appInstance := rest.NewRouter(bookService)
+	rest.StartServer(appInstance, "3000")
+}
+
+func loadJsonData() []entity.BookDetail {
 	jsonData, err := os.ReadFile("./testdata/json/books.json")
 	if err != nil {
 		log.Error().Msgf(apperrors.ErrMsgSomethingWentWrong)
@@ -35,7 +44,5 @@ func main() {
 		books[i].UpdatedAt = currentTime
 	}
 
-	for _, book := range books {
-		fmt.Printf("Title: %s, Copies: %d, UUID: %s, CreatedAt: %s\n", book.Title, book.AvailableCopies, book.UUID, book.CreatedAt)
-	}
+	return books
 }
