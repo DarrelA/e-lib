@@ -17,6 +17,7 @@ import (
 const (
 	warnMsgOutOfStock        = "Book '%s' is out of stock."
 	errMsgInvalidRequestBody = "Invalid request Body"
+	errMsgOnlyOneCopy        = "Each user can only borrow one copy per book."
 )
 
 type LoanService struct {
@@ -43,10 +44,21 @@ func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
 }
 
 func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.RestErr) {
-	bookDetail, err := ls.bookService.GetBookByTitle(title)
+	bookDetail, restErr := ls.bookService.GetBookByTitle(title)
+	if restErr != nil {
+		log.Error().Err(restErr).Msgf("")
+		return nil, restErr
+	}
+
+	loanDetails, err := filedb.LoadLoanDetails()
 	if err != nil {
-		log.Error().Err(err).Msgf("")
-		return nil, err
+		log.Error().Err(err).Msg("")
+		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+	}
+
+	hasLoanId := filedb.HasLoanId(loanDetails, bookDetail, ls.user.ID)
+	if hasLoanId {
+		return nil, apperrors.NewBadRequestError(errMsgOnlyOneCopy)
 	}
 
 	if bookDetail.AvailableCopies <= 0 {

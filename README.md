@@ -1,6 +1,7 @@
 <a id="readme-top"></a>
 
 - [About The Project](#about-the-project)
+  - [Assumptions](#assumptions)
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
     - [Golang](#golang)
@@ -17,6 +18,10 @@ This is a simple RESTful API to manage loan of e-book in an electronic library. 
 2. Borrow a book.
 3. Extend a book loan.
 4. Return a book.
+
+## Assumptions
+
+- Each user can only borrow one copy per book.
 
 # Getting Started
 

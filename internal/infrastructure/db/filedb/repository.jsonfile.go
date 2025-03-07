@@ -83,10 +83,10 @@ func DecrementAvailableCopies(title string) error {
 	booksMutex.Lock()         // Acquire lock before accessing `books`
 	defer booksMutex.Unlock() // Ensure lock is released
 
-	for i := range books {
-		if books[i].Title == title {
-			if books[i].AvailableCopies > 0 {
-				books[i].AvailableCopies--
+	for _, book := range books {
+		if book.Title == title {
+			if book.AvailableCopies > 0 {
+				book.AvailableCopies--
 				break
 			}
 		}
@@ -103,9 +103,9 @@ func IncrementAvailableCopies(title string) error {
 	booksMutex.Lock()         // Acquire lock before accessing `books`
 	defer booksMutex.Unlock() // Ensure lock is released
 
-	for i := range books {
-		if books[i].Title == title {
-			books[i].AvailableCopies++
+	for _, book := range books {
+		if book.Title == title {
+			book.AvailableCopies++
 			break
 		}
 	}
@@ -152,10 +152,10 @@ func UpdateLoanDetail(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, us
 	var updatedLoanDetail *entity.Loan
 
 	found := false
-	for i := range loanDetails {
-		if loanDetails[i].BookUUID == bookDetail.UUID && loanDetails[i].UserID == userID {
-			loanDetails[i].ReturnDate = loanDetails[i].ReturnDate.Add(time.Hour * 24 * 7 * 3)
-			updatedLoanDetail = loanDetails[i]
+	for _, loan := range loanDetails {
+		if loan.BookUUID == bookDetail.UUID && loan.UserID == userID {
+			loan.ReturnDate = loan.ReturnDate.Add(time.Hour * 24 * 7 * 3)
+			updatedLoanDetail = loan
 			found = true
 			break
 		}
@@ -174,12 +174,21 @@ func UpdateLoanDetail(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, us
 	return updatedLoanDetail, nil
 }
 
+func HasLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) bool {
+	for _, loan := range loanDetails {
+		if loan.BookUUID == bookDetail.UUID && loan.UserID == userID {
+			return true
+		}
+	}
+	return false
+}
+
 func FindLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (*entity.Loan, *apperrors.RestErr) {
 	var loanDetail *entity.Loan
 	found := false
-	for i := range loanDetails {
-		if loanDetails[i].BookUUID == bookDetail.UUID && loanDetails[i].UserID == userID {
-			loanDetail = loanDetails[i]
+	for _, loan := range loanDetails {
+		if loan.BookUUID == bookDetail.UUID && loan.UserID == userID {
+			loanDetail = loan
 			found = true
 			break
 		}
@@ -195,9 +204,9 @@ func FindLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID i
 
 func SetIsReturned(loanDetails []*entity.Loan, loanID uuid.UUID) *apperrors.RestErr {
 	found := false
-	for i := range loanDetails {
-		if loanDetails[i].UUID == loanID {
-			loanDetails[i].IsReturned = true
+	for _, loan := range loanDetails {
+		if loan.UUID == loanID {
+			loan.IsReturned = true
 			found = true
 			break
 		}
