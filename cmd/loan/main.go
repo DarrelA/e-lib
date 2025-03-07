@@ -9,14 +9,19 @@ import (
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/DarrelA/e-lib/internal/infrastructure/db/filedb"
+	logger "github.com/DarrelA/e-lib/internal/infrastructure/logger/zerolog"
 	interfaceSvc "github.com/DarrelA/e-lib/internal/interface/services"
 	"github.com/DarrelA/e-lib/internal/interface/transport/rest"
-	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	logFilePath = "app.log"
+)
+
 func main() {
-	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	logFile := logger.CreateAppLog(logFilePath)
+	logger.NewZeroLogger(logFile)
 	books := filedb.LoadBooksJsonData()
 	user := getDummyUserData()
 
