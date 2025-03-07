@@ -55,38 +55,26 @@ func LoadBooksJsonData() []entity.Book {
 func SaveLoanDetail(loan *entity.Loan) error {
 	filePath := loansJsonFilePath
 	existingLoans := []*entity.Loan{}
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(content, &existingLoans)
-	if err != nil {
-		return err
+	if err := readJSONFromFile(filePath, &existingLoans); err != nil {
+		if os.IsNotExist(err) {
+			existingLoans = []*entity.Loan{}
+		} else {
+			return err
+		}
 	}
 
 	existingLoans = append(existingLoans, loan)
-	jsonData, err := json.MarshalIndent(existingLoans, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(filePath, jsonData, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return writeJSONToFile(filePath, existingLoans)
 }
 
 func DecrementAvailableCopies(title string) error {
 	booksMutex.Lock()         // Acquire lock before accessing `books`
 	defer booksMutex.Unlock() // Ensure lock is released
 
-	for _, book := range books {
-		if book.Title == title {
-			if book.AvailableCopies > 0 {
-				book.AvailableCopies--
+	for i := range books {
+		if books[i].Title == title {
+			if books[i].AvailableCopies > 0 {
+				books[i].AvailableCopies--
 				break
 			}
 		}
@@ -103,9 +91,9 @@ func IncrementAvailableCopies(title string) error {
 	booksMutex.Lock()         // Acquire lock before accessing `books`
 	defer booksMutex.Unlock() // Ensure lock is released
 
-	for _, book := range books {
-		if book.Title == title {
-			book.AvailableCopies++
+	for i := range books {
+		if books[i].Title == title {
+			books[i].AvailableCopies++
 			break
 		}
 	}
@@ -118,17 +106,7 @@ func IncrementAvailableCopies(title string) error {
 }
 
 func saveBooks(books []entity.Book) error {
-	jsonData, err := json.MarshalIndent(books, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(booksJsonFilePath, jsonData, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return writeJSONToFile(booksJsonFilePath, books)
 }
 
 func LoadLoanDetails() ([]*entity.Loan, error) {
@@ -174,21 +152,21 @@ func UpdateLoanDetail(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, us
 	return updatedLoanDetail, nil
 }
 
-func HasLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) bool {
+func GetLoanStatus(loanDetails []*entity.Loan, loanID uuid.UUID) (bool, bool) {
 	for _, loan := range loanDetails {
-		if loan.BookUUID == bookDetail.UUID && loan.UserID == userID {
-			return true
+		if loan.UUID == loanID {
+			return true, loan.IsReturned
 		}
 	}
-	return false
+	return false, false
 }
 
-func FindLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (*entity.Loan, *apperrors.RestErr) {
-	var loanDetail *entity.Loan
+func FindLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (*uuid.UUID, *apperrors.RestErr) {
+	var loanID *uuid.UUID
 	found := false
 	for _, loan := range loanDetails {
-		if loan.BookUUID == bookDetail.UUID && loan.UserID == userID {
-			loanDetail = loan
+		if loan.BookUUID == bookDetail.UUID && loan.UserID == userID && !loan.IsReturned {
+			loanID = &loan.UUID
 			found = true
 			break
 		}
@@ -199,7 +177,7 @@ func FindLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID i
 		return nil, apperrors.NewNotFoundError(errMsgLoanDetailNotFound)
 	}
 
-	return loanDetail, nil
+	return loanID, nil
 }
 
 func SetIsReturned(loanDetails []*entity.Loan, loanID uuid.UUID) *apperrors.RestErr {
@@ -226,15 +204,23 @@ func SetIsReturned(loanDetails []*entity.Loan, loanID uuid.UUID) *apperrors.Rest
 }
 
 func saveLoanDetails(loanDetails []*entity.Loan) error {
-	jsonData, err := json.MarshalIndent(loanDetails, "", "  ")
+	return writeJSONToFile(loansJsonFilePath, loanDetails)
+}
+
+// Helper function to read JSON data from a file and unmarshal it.
+func readJSONFromFile(filePath string, data interface{}) error {
+	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
 	}
+	return json.Unmarshal(content, data)
+}
 
-	err = os.WriteFile(loansJsonFilePath, jsonData, 0644)
+// Helper function to marshal data to JSON and write it to a file.
+func writeJSONToFile(filePath string, data interface{}) error {
+	jsonData, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		return err
 	}
-
-	return nil
+	return os.WriteFile(filePath, jsonData, 0644)
 }

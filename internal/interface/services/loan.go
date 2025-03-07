@@ -18,6 +18,7 @@ const (
 	warnMsgOutOfStock        = "Book '%s' is out of stock."
 	errMsgInvalidRequestBody = "Invalid request Body"
 	errMsgOnlyOneCopy        = "Each user can only borrow one copy per book."
+	errMsgAlreadyReturned    = "You have already returned the book."
 )
 
 type LoanService struct {
@@ -56,9 +57,10 @@ func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.Res
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
-	hasLoanId := filedb.HasLoanId(loanDetails, bookDetail, ls.user.ID)
-	if hasLoanId {
-		return nil, apperrors.NewBadRequestError(errMsgOnlyOneCopy)
+	for _, loan := range loanDetails {
+		if loan.BookUUID == bookDetail.UUID && loan.UserID == ls.user.ID && !loan.IsReturned {
+			return nil, apperrors.NewBadRequestError(errMsgOnlyOneCopy)
+		}
 	}
 
 	if bookDetail.AvailableCopies <= 0 {
@@ -87,13 +89,13 @@ func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.Res
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
-	loanDetail := &dto.LoanDetail{
+	loan := &dto.LoanDetail{
 		BookTitle:      title,
 		NameOfBorrower: newLoan.NameOfBorrower,
 		LoanDate:       newLoan.LoanDate,
 		ReturnDate:     newLoan.ReturnDate,
 	}
-	return loanDetail, nil
+	return loan, nil
 }
 
 func (ls *LoanService) ExtendBookLoanHandler(c *fiber.Ctx) error {
@@ -154,11 +156,6 @@ func (ls *LoanService) ReturnBookHandler(c *fiber.Ctx) error {
 }
 
 func (ls *LoanService) ReturnBook(title string) *apperrors.RestErr {
-	if err := filedb.IncrementAvailableCopies(title); err != nil {
-		log.Error().Err(err).Msg("")
-		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
-	}
-
 	bookDetail, restErr := ls.bookService.GetBookByTitle(title)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
@@ -171,13 +168,25 @@ func (ls *LoanService) ReturnBook(title string) *apperrors.RestErr {
 		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
-	loanDetail, restErr := filedb.FindLoanId(loanDetails, bookDetail, ls.user.ID)
+	loanID, restErr := filedb.FindLoanId(loanDetails, bookDetail, ls.user.ID)
 	if restErr != nil {
 		log.Error().Err(restErr).Msg("")
 		return restErr
 	}
 
-	if restErr := filedb.SetIsReturned(loanDetails, loanDetail.UUID); restErr != nil {
+	hasLoan, isReturned := filedb.GetLoanStatus(loanDetails, *loanID)
+	if hasLoan && isReturned {
+		return apperrors.NewBadRequestError(errMsgOnlyOneCopy)
+	}
+
+	if hasLoan && !isReturned {
+		if err := filedb.IncrementAvailableCopies(title); err != nil {
+			log.Error().Err(err).Msg("")
+			return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		}
+	}
+
+	if restErr := filedb.SetIsReturned(loanDetails, *loanID); restErr != nil {
 		log.Error().Err(err).Msg("")
 		return restErr
 	}
