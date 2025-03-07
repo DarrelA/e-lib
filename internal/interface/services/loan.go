@@ -1,23 +1,20 @@
 package services
 
 import (
-	"encoding/json"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	appSvc "github.com/DarrelA/e-lib/internal/application/services"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
+	"github.com/DarrelA/e-lib/internal/infrastructure/db/filedb"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
 
 const (
-	loansJsonFilePath = "./testdata/json/loans.json"
-
 	warnMsgOutOfStock        = "Book '%s' is out of stock."
 	errMsgInvalidRequestBody = "Invalid request Body"
 )
@@ -68,39 +65,14 @@ func (ls *LoanService) BorrowBook(title string) (*entity.LoanDetail, *apperrors.
 		LoanDate:       now,
 		ReturnDate:     returnDate,
 	}
-	if err := saveLoanDetailToFile(loanDetail); err != nil {
+	if err := filedb.SaveLoanDetail(loanDetail); err != nil {
+		log.Error().Err(err).Msg("")
+		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+	}
+	if err := filedb.DecrementAvailableCopies(title); err != nil {
 		log.Error().Err(err).Msg("")
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
-	// @TODO: Create a function to decrement available copies.
-
 	return loanDetail, nil
-}
-
-func saveLoanDetailToFile(loan *entity.LoanDetail) error {
-	filePath := loansJsonFilePath
-	existingLoans := []*entity.LoanDetail{}
-	content, err := os.ReadFile(filePath)
-	if err != nil {
-		return err
-	}
-
-	err = json.Unmarshal(content, &existingLoans)
-	if err != nil {
-		return err
-	}
-
-	existingLoans = append(existingLoans, loan)
-	jsonData, err := json.MarshalIndent(existingLoans, "", "  ")
-	if err != nil {
-		return err
-	}
-
-	err = os.WriteFile(filePath, jsonData, 0644)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
