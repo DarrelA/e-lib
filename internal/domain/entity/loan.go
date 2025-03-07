@@ -7,7 +7,7 @@ import (
 )
 
 type LoanDetail struct {
-	ID             uuid.UUID `json:"id" db:"id"`
+	UUID           uuid.UUID `json:"uuid"`
 	UserID         int64     `json:"user_id"` // Foreign key to UserDetail
 	BookID         uuid.UUID `json:"book_id"` // Foreign key to BookDetail
 	NameOfBorrower string    `json:"name_of_borrower"`

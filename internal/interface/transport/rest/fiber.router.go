@@ -21,6 +21,7 @@ func StartServer(app *fiber.App, port string) {
 
 func NewRouter(
 	bookService appSvc.BookService,
+	loanService appSvc.LoanService,
 ) *fiber.App {
 	log.Info().Msg("creating fiber instances")
 	appInstance := fiber.New()
@@ -33,6 +34,11 @@ func NewRouter(
 	 *   BookServices   *
 	 ********************/
 	appInstance.Get("/Book", bookService.GetBookByTitleHandler)
+
+	/********************
+	*   LoanServices   *
+	********************/
+	appInstance.Post("/Borrow", loanService.BorrowBookHandler)
 
 	appInstance.All("*", func(c *fiber.Ctx) error {
 		path := c.Path()

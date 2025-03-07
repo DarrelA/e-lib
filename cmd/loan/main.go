@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+	"io"
+	"net/http"
 	"os"
 	"time"
 
@@ -14,17 +16,23 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+const (
+	booksJsonFilePath = "./testdata/json/books.json"
+)
+
 func main() {
 	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
-	books := loadJsonData()
+	books := loadBooksJsonData()
+	user := getDummyUserData()
 
 	bookService := interfaceSvc.NewBookService(books)
-	appInstance := rest.NewRouter(bookService)
+	loanService := interfaceSvc.NewLoanService(user, bookService)
+	appInstance := rest.NewRouter(bookService, loanService)
 	rest.StartServer(appInstance, "3000")
 }
 
-func loadJsonData() []entity.BookDetail {
-	jsonData, err := os.ReadFile("./testdata/json/books.json")
+func loadBooksJsonData() []entity.BookDetail {
+	jsonData, err := os.ReadFile(booksJsonFilePath)
 	if err != nil {
 		log.Error().Msgf(apperrors.ErrMsgSomethingWentWrong)
 	}
@@ -45,4 +53,35 @@ func loadJsonData() []entity.BookDetail {
 	}
 
 	return books
+}
+
+func getDummyUserData() entity.UserDetail {
+	url := "https://sandbox.api.myinfo.gov.sg/com/v4/person-sample/S9812381D"
+	resp, err := http.Get(url)
+	if err != nil {
+		log.Error().Msgf(apperrors.ErrMsgSomethingWentWrong)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		log.Error().Msgf(apperrors.ErrMsgSomethingWentWrong)
+	}
+
+	var myInfoResponse entity.MyInfoResponse
+	err = json.Unmarshal(body, &myInfoResponse)
+	if err != nil {
+		log.Error().Msgf(apperrors.ErrMsgSomethingWentWrong)
+	}
+
+	currentTime := time.Now()
+	userDetail := entity.UserDetail{
+		ID:        1,
+		Name:      myInfoResponse.Name.Value,
+		Email:     myInfoResponse.Email.Value,
+		CreatedAt: currentTime,
+		UpdatedAt: currentTime,
+	}
+
+	return userDetail
 }
