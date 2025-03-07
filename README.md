@@ -38,7 +38,7 @@ This is a simple RESTful API to manage loan of e-book in an electronic library. 
 
 # Roadmap
 
-- [ ] Implement simple in-memory storage with pre-populated books on startup.
+- [x] Implement simple in-memory storage with pre-populated books on startup.
 - [ ] Integrate PostgreSQL for persistent data storage.
 - [ ] Implement logging for API requests and responses.
 - [ ] Add validation for each API (e.g., missing or invalid input).
@@ -46,3 +46,7 @@ This is a simple RESTful API to manage loan of e-book in an electronic library. 
 - [ ] Integrate SingPass MyInfo for user authentication.
 
 # Acknowledgement
+
+- [Fiber](https://docs.gofiber.io/)
+- [zerolog](https://github.com/rs/zerolog)
+- [mockaroo](https://www.mockaroo.com/)
