@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"slices"
+
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/google/uuid"
@@ -19,6 +21,7 @@ const (
 	loansJsonFilePath = "./internal/infrastructure/db/filedb/loans.json"
 
 	errMsgLoanDetailNotFound = "Loan detail not found."
+	errMsgFailedToSaveLoan   = "Failed to save loan details."
 )
 
 var (
@@ -97,6 +100,24 @@ func DecrementAvailableCopies(title string) error {
 	return nil
 }
 
+func IncrementAvailableCopies(title string) error {
+	booksMutex.Lock()         // Acquire lock before accessing `books`
+	defer booksMutex.Unlock() // Ensure lock is released
+
+	for i := range books {
+		if books[i].Title == title {
+			books[i].AvailableCopies++
+			break
+		}
+	}
+
+	if err := saveBooks(books); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func saveBooks(books []entity.BookDetail) error {
 	jsonData, err := json.MarshalIndent(books, "", "  ")
 	if err != nil {
@@ -127,12 +148,13 @@ func LoadLoanDetails() ([]*entity.LoanDetail, error) {
 	return loanDetails, nil
 }
 
-func UpdateLoanDetail(loanDetails []*entity.LoanDetail, bookDetail *entity.BookDetail, userID int64) (*entity.LoanDetail, error) {
+func UpdateLoanDetail(loanDetails []*entity.LoanDetail, bookDetail *entity.BookDetail, userID int64) (
+	*entity.LoanDetail, *apperrors.RestErr) {
 	var updatedLoanDetail *entity.LoanDetail
 
 	found := false
 	for i := range loanDetails {
-		if loanDetails[i].BookID == *bookDetail.UUID && loanDetails[i].UserID == userID {
+		if loanDetails[i].BookTitle == bookDetail.Title && loanDetails[i].UserID == userID {
 			loanDetails[i].ReturnDate = loanDetails[i].ReturnDate.Add(time.Hour * 24 * 7 * 3)
 			updatedLoanDetail = loanDetails[i]
 			found = true
@@ -146,11 +168,37 @@ func UpdateLoanDetail(loanDetails []*entity.LoanDetail, bookDetail *entity.BookD
 	}
 
 	if err := saveLoanDetails(loanDetails); err != nil {
-		log.Error().Err(err).Msg("Failed to save loan details")
-		return nil, apperrors.NewInternalServerError("Error saving loan details")
+		log.Error().Err(err).Msg(errMsgFailedToSaveLoan)
+		return nil, apperrors.NewInternalServerError(errMsgFailedToSaveLoan)
 	}
 
 	return updatedLoanDetail, nil
+}
+
+func RemoveLoanDetail(loanDetails []*entity.LoanDetail, title string, userID int64) *apperrors.RestErr {
+	found := false
+	indexToRemove := -1
+	for i := range loanDetails {
+		if loanDetails[i].BookTitle == title && loanDetails[i].UserID == userID {
+			indexToRemove = i
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		log.Error().Msg(errMsgLoanDetailNotFound)
+		return apperrors.NewNotFoundError(errMsgLoanDetailNotFound)
+	}
+
+	loanDetails = slices.Delete(loanDetails, indexToRemove, indexToRemove+1)
+
+	if err := saveLoanDetails(loanDetails); err != nil {
+		log.Error().Err(err).Msg(errMsgFailedToSaveLoan)
+		return apperrors.NewInternalServerError(errMsgFailedToSaveLoan)
+	}
+
+	return nil
 }
 
 func saveLoanDetails(loanDetails []*entity.LoanDetail) error {

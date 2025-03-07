@@ -60,7 +60,7 @@ func (ls *LoanService) BorrowBook(title string) (*entity.LoanDetail, *apperrors.
 	loanDetail := &entity.LoanDetail{
 		UUID:           uuid.New(),
 		UserID:         ls.user.ID, // Use the user from the service context.
-		BookID:         *bookDetail.UUID,
+		BookTitle:      title,
 		NameOfBorrower: ls.user.Name,
 		LoanDate:       now,
 		ReturnDate:     returnDate,
@@ -104,11 +104,45 @@ func (ls *LoanService) ExtendBookLoan(title string) (*entity.LoanDetail, *apperr
 		return nil, restErr
 	}
 
-	updatedLoanDetail, err := filedb.UpdateLoanDetail(loanDetails, bookDetail, ls.user.ID)
-	if err != nil {
-		log.Error().Err(err).Msgf("")
-		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+	updatedLoanDetail, restErr := filedb.UpdateLoanDetail(loanDetails, bookDetail, ls.user.ID)
+	if restErr != nil {
+		log.Error().Err(restErr).Msgf("")
+		return nil, restErr
 	}
 
 	return updatedLoanDetail, nil
+}
+
+func (ls *LoanService) ReturnBookHandler(c *fiber.Ctx) error {
+	var borrowBook dto.BorrowBook
+	if err := c.BodyParser(&borrowBook); err != nil {
+		log.Error().Err(err).Msg(errMsgInvalidRequestBody)
+		return c.Status(fiber.StatusBadRequest).JSON(errMsgInvalidRequestBody)
+	}
+
+	err := ls.ReturnBook(borrowBook.Title)
+	if err != nil {
+		return c.Status(err.Status).JSON(err)
+	}
+	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success"})
+}
+
+func (ls *LoanService) ReturnBook(title string) *apperrors.RestErr {
+	if err := filedb.IncrementAvailableCopies(title); err != nil {
+		log.Error().Err(err).Msg("")
+		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+	}
+
+	loanDetails, err := filedb.LoadLoanDetails()
+	if err != nil {
+		log.Error().Err(err).Msg("")
+		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+	}
+
+	if err := filedb.RemoveLoanDetail(loanDetails, title, ls.user.ID); err != nil {
+		log.Error().Err(err).Msg("")
+		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+	}
+
+	return nil
 }

@@ -13,4 +13,7 @@ type LoanService interface {
 
 	ExtendBookLoanHandler(c *fiber.Ctx) error
 	ExtendBookLoan(title string) (*entity.LoanDetail, *apperrors.RestErr)
+
+	ReturnBookHandler(c *fiber.Ctx) error
+	ReturnBook(title string) *apperrors.RestErr
 }
