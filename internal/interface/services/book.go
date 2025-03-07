@@ -15,10 +15,10 @@ const (
 )
 
 type BookService struct {
-	Books []entity.BookDetail
+	Books []entity.Book
 }
 
-func NewBookService(books []entity.BookDetail) appSvc.BookService {
+func NewBookService(books []entity.Book) appSvc.BookService {
 	return &BookService{Books: books}
 }
 
@@ -34,7 +34,7 @@ func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 		return c.Status(err.Status).JSON(err)
 	}
 
-	response := dto.BookTitleAvailability{
+	response := dto.BookDetail{
 		Title:           book.Title,
 		AvailableCopies: book.AvailableCopies,
 	}
@@ -42,9 +42,13 @@ func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(response)
 }
 
-func (bs *BookService) GetBookByTitle(title string) (*entity.BookDetail, *apperrors.RestErr) {
+func (bs *BookService) GetBookByTitle(title string) (*dto.BookDetail, *apperrors.RestErr) {
 	for _, book := range bs.Books {
 		if book.Title == title {
+			book := dto.BookDetail{
+				Title:           book.Title,
+				AvailableCopies: book.AvailableCopies,
+			}
 			return &book, nil
 		}
 	}

@@ -26,7 +26,7 @@ func main() {
 	rest.StartServer(appInstance, "3000")
 }
 
-func getDummyUserData() entity.UserDetail {
+func getDummyUserData() entity.User {
 	url := "https://sandbox.api.myinfo.gov.sg/com/v4/person-sample/S9812381D"
 	resp, err := http.Get(url)
 	if err != nil {
@@ -46,7 +46,7 @@ func getDummyUserData() entity.UserDetail {
 	}
 
 	currentTime := time.Now()
-	userDetail := entity.UserDetail{
+	userDetail := entity.User{
 		ID:        1,
 		Name:      myInfoResponse.Name.Value,
 		Email:     myInfoResponse.Email.Value,

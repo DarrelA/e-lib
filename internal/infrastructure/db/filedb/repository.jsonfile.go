@@ -3,12 +3,12 @@ package filedb
 import (
 	"encoding/json"
 	"os"
+	"slices"
 	"sync"
 	"time"
 
-	"slices"
-
 	"github.com/DarrelA/e-lib/internal/apperrors"
+	"github.com/DarrelA/e-lib/internal/application/dto"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -25,15 +25,15 @@ const (
 )
 
 var (
-	books      []entity.BookDetail
+	books      []entity.Book
 	booksMutex sync.Mutex // Add mutex to synchronize access to `books`
 )
 
-func LoadBooksJsonData() []entity.BookDetail {
+func LoadBooksJsonData() []entity.Book {
 	jsonData, err := os.ReadFile(booksJsonTestDataPath)
 	if err != nil {
 		log.Error().Msgf(apperrors.ErrMsgSomethingWentWrong)
-		return []entity.BookDetail{}
+		return []entity.Book{}
 	}
 
 	err = json.Unmarshal(jsonData, &books)
@@ -53,9 +53,9 @@ func LoadBooksJsonData() []entity.BookDetail {
 	return books
 }
 
-func SaveLoanDetail(loan *entity.LoanDetail) error {
+func SaveLoanDetail(loan *entity.Loan) error {
 	filePath := loansJsonFilePath
-	existingLoans := []*entity.LoanDetail{}
+	existingLoans := []*entity.Loan{}
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		return err
@@ -118,7 +118,7 @@ func IncrementAvailableCopies(title string) error {
 	return nil
 }
 
-func saveBooks(books []entity.BookDetail) error {
+func saveBooks(books []entity.Book) error {
 	jsonData, err := json.MarshalIndent(books, "", "  ")
 	if err != nil {
 		return err
@@ -132,13 +132,13 @@ func saveBooks(books []entity.BookDetail) error {
 	return nil
 }
 
-func LoadLoanDetails() ([]*entity.LoanDetail, error) {
+func LoadLoanDetails() ([]*entity.Loan, error) {
 	jsonData, err := os.ReadFile(loansJsonFilePath)
 	if err != nil {
 		return nil, err
 	}
 
-	var loanDetails []*entity.LoanDetail
+	var loanDetails []*entity.Loan
 	err = json.Unmarshal(jsonData, &loanDetails)
 
 	if err != nil {
@@ -148,13 +148,13 @@ func LoadLoanDetails() ([]*entity.LoanDetail, error) {
 	return loanDetails, nil
 }
 
-func UpdateLoanDetail(loanDetails []*entity.LoanDetail, bookDetail *entity.BookDetail, userID int64) (
-	*entity.LoanDetail, *apperrors.RestErr) {
-	var updatedLoanDetail *entity.LoanDetail
+func UpdateLoanDetail(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (
+	*entity.Loan, *apperrors.RestErr) {
+	var updatedLoanDetail *entity.Loan
 
 	found := false
 	for i := range loanDetails {
-		if loanDetails[i].BookTitle == bookDetail.Title && loanDetails[i].UserID == userID {
+		if loanDetails[i].BookUUID == bookDetail.UUID && loanDetails[i].UserID == userID {
 			loanDetails[i].ReturnDate = loanDetails[i].ReturnDate.Add(time.Hour * 24 * 7 * 3)
 			updatedLoanDetail = loanDetails[i]
 			found = true
@@ -175,11 +175,11 @@ func UpdateLoanDetail(loanDetails []*entity.LoanDetail, bookDetail *entity.BookD
 	return updatedLoanDetail, nil
 }
 
-func RemoveLoanDetail(loanDetails []*entity.LoanDetail, title string, userID int64) *apperrors.RestErr {
+func RemoveLoanDetail(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) *apperrors.RestErr {
 	found := false
 	indexToRemove := -1
 	for i := range loanDetails {
-		if loanDetails[i].BookTitle == title && loanDetails[i].UserID == userID {
+		if loanDetails[i].BookUUID == bookDetail.UUID && loanDetails[i].UserID == userID {
 			indexToRemove = i
 			found = true
 			break
@@ -201,7 +201,7 @@ func RemoveLoanDetail(loanDetails []*entity.LoanDetail, title string, userID int
 	return nil
 }
 
-func saveLoanDetails(loanDetails []*entity.LoanDetail) error {
+func saveLoanDetails(loanDetails []*entity.Loan) error {
 	jsonData, err := json.MarshalIndent(loanDetails, "", "  ")
 	if err != nil {
 		return err

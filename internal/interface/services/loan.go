@@ -20,11 +20,11 @@ const (
 )
 
 type LoanService struct {
-	user        entity.UserDetail
+	user        entity.User
 	bookService appSvc.BookService
 }
 
-func NewLoanService(user entity.UserDetail, bookService appSvc.BookService) appSvc.LoanService {
+func NewLoanService(user entity.User, bookService appSvc.BookService) appSvc.LoanService {
 	return &LoanService{user: user, bookService: bookService}
 }
 
@@ -42,7 +42,7 @@ func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(loanDetail)
 }
 
-func (ls *LoanService) BorrowBook(title string) (*entity.LoanDetail, *apperrors.RestErr) {
+func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.RestErr) {
 	bookDetail, err := ls.bookService.GetBookByTitle(title)
 	if err != nil {
 		log.Error().Err(err).Msgf("")
@@ -57,15 +57,15 @@ func (ls *LoanService) BorrowBook(title string) (*entity.LoanDetail, *apperrors.
 	now := time.Now()
 	returnDate := now.Add(time.Hour * 24 * 7 * 4) // Loan for 4 weeks
 
-	loanDetail := &entity.LoanDetail{
+	newLoan := &entity.Loan{
 		UUID:           uuid.New(),
 		UserID:         ls.user.ID, // Use the user from the service context.
-		BookTitle:      title,
 		NameOfBorrower: ls.user.Name,
 		LoanDate:       now,
 		ReturnDate:     returnDate,
+		IsReturned:     false,
 	}
-	if err := filedb.SaveLoanDetail(loanDetail); err != nil {
+	if err := filedb.SaveLoanDetail(newLoan); err != nil {
 		log.Error().Err(err).Msg("")
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
@@ -74,6 +74,12 @@ func (ls *LoanService) BorrowBook(title string) (*entity.LoanDetail, *apperrors.
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
+	loanDetail := &dto.LoanDetail{
+		BookTitle:      title,
+		NameOfBorrower: newLoan.NameOfBorrower,
+		LoanDate:       newLoan.LoanDate,
+		ReturnDate:     newLoan.ReturnDate,
+	}
 	return loanDetail, nil
 }
 
@@ -91,7 +97,7 @@ func (ls *LoanService) ExtendBookLoanHandler(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(loanDetail)
 }
 
-func (ls *LoanService) ExtendBookLoan(title string) (*entity.LoanDetail, *apperrors.RestErr) {
+func (ls *LoanService) ExtendBookLoan(title string) (*dto.LoanDetail, *apperrors.RestErr) {
 	loanDetails, err := filedb.LoadLoanDetails()
 	if err != nil {
 		log.Error().Err(err).Msg("")
@@ -110,7 +116,14 @@ func (ls *LoanService) ExtendBookLoan(title string) (*entity.LoanDetail, *apperr
 		return nil, restErr
 	}
 
-	return updatedLoanDetail, nil
+	loanDetail := &dto.LoanDetail{
+		BookTitle:      title,
+		NameOfBorrower: updatedLoanDetail.NameOfBorrower,
+		LoanDate:       updatedLoanDetail.LoanDate,
+		ReturnDate:     updatedLoanDetail.ReturnDate,
+	}
+
+	return loanDetail, nil
 }
 
 func (ls *LoanService) ReturnBookHandler(c *fiber.Ctx) error {
@@ -133,13 +146,19 @@ func (ls *LoanService) ReturnBook(title string) *apperrors.RestErr {
 		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
+	bookDetail, restErr := ls.bookService.GetBookByTitle(title)
+	if restErr != nil {
+		log.Error().Err(restErr).Msgf("")
+		return restErr
+	}
+
 	loanDetails, err := filedb.LoadLoanDetails()
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
-	if err := filedb.RemoveLoanDetail(loanDetails, title, ls.user.ID); err != nil {
+	if err := filedb.RemoveLoanDetail(loanDetails, bookDetail, ls.user.ID); err != nil {
 		log.Error().Err(err).Msg("")
 		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
