@@ -29,27 +29,23 @@ func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(errMsgEmptyTitle)
 	}
 
-	book, err := bs.GetBookByTitle(title)
+	bookDetail, err := bs.GetBookByTitle(title)
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
 
-	response := dto.BookDetail{
-		Title:           book.Title,
-		AvailableCopies: book.AvailableCopies,
-	}
-
-	return c.Status(fiber.StatusOK).JSON(response)
+	return c.Status(fiber.StatusOK).JSON(bookDetail)
 }
 
 func (bs *BookService) GetBookByTitle(title string) (*dto.BookDetail, *apperrors.RestErr) {
 	for _, book := range bs.Books {
 		if book.Title == title {
-			book := dto.BookDetail{
+			bookDetail := dto.BookDetail{
+				UUID:            *book.UUID,
 				Title:           book.Title,
 				AvailableCopies: book.AvailableCopies,
 			}
-			return &book, nil
+			return &bookDetail, nil
 		}
 	}
 

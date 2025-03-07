@@ -60,6 +60,7 @@ func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.Res
 	newLoan := &entity.Loan{
 		UUID:           uuid.New(),
 		UserID:         ls.user.ID, // Use the user from the service context.
+		BookUUID:       bookDetail.UUID,
 		NameOfBorrower: ls.user.Name,
 		LoanDate:       now,
 		ReturnDate:     returnDate,
@@ -158,9 +159,15 @@ func (ls *LoanService) ReturnBook(title string) *apperrors.RestErr {
 		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
-	if err := filedb.RemoveLoanDetail(loanDetails, bookDetail, ls.user.ID); err != nil {
+	loanDetail, restErr := filedb.FindLoanId(loanDetails, bookDetail, ls.user.ID)
+	if restErr != nil {
+		log.Error().Err(restErr).Msg("")
+		return restErr
+	}
+
+	if restErr := filedb.SetIsReturned(loanDetails, loanDetail.UUID); restErr != nil {
 		log.Error().Err(err).Msg("")
-		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		return restErr
 	}
 
 	return nil

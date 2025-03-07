@@ -3,7 +3,6 @@ package filedb
 import (
 	"encoding/json"
 	"os"
-	"slices"
 	"sync"
 	"time"
 
@@ -175,12 +174,30 @@ func UpdateLoanDetail(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, us
 	return updatedLoanDetail, nil
 }
 
-func RemoveLoanDetail(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) *apperrors.RestErr {
+func FindLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (*entity.Loan, *apperrors.RestErr) {
+	var loanDetail *entity.Loan
 	found := false
-	indexToRemove := -1
 	for i := range loanDetails {
 		if loanDetails[i].BookUUID == bookDetail.UUID && loanDetails[i].UserID == userID {
-			indexToRemove = i
+			loanDetail = loanDetails[i]
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		log.Error().Msg(errMsgLoanDetailNotFound)
+		return nil, apperrors.NewNotFoundError(errMsgLoanDetailNotFound)
+	}
+
+	return loanDetail, nil
+}
+
+func SetIsReturned(loanDetails []*entity.Loan, loanID uuid.UUID) *apperrors.RestErr {
+	found := false
+	for i := range loanDetails {
+		if loanDetails[i].UUID == loanID {
+			loanDetails[i].IsReturned = true
 			found = true
 			break
 		}
@@ -190,8 +207,6 @@ func RemoveLoanDetail(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, us
 		log.Error().Msg(errMsgLoanDetailNotFound)
 		return apperrors.NewNotFoundError(errMsgLoanDetailNotFound)
 	}
-
-	loanDetails = slices.Delete(loanDetails, indexToRemove, indexToRemove+1)
 
 	if err := saveLoanDetails(loanDetails); err != nil {
 		log.Error().Err(err).Msg(errMsgFailedToSaveLoan)
