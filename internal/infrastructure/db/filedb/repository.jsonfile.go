@@ -17,6 +17,8 @@ const (
 
 	booksJsonFilePath = "./internal/infrastructure/db/filedb/books.json"
 	loansJsonFilePath = "./internal/infrastructure/db/filedb/loans.json"
+
+	errMsgLoanDetailNotFound = "Loan detail not found."
 )
 
 var (
@@ -102,6 +104,62 @@ func saveBooks(books []entity.BookDetail) error {
 	}
 
 	err = os.WriteFile(booksJsonFilePath, jsonData, 0644)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func LoadLoanDetails() ([]*entity.LoanDetail, error) {
+	jsonData, err := os.ReadFile(loansJsonFilePath)
+	if err != nil {
+		return nil, err
+	}
+
+	var loanDetails []*entity.LoanDetail
+	err = json.Unmarshal(jsonData, &loanDetails)
+
+	if err != nil {
+		return nil, err
+	}
+
+	return loanDetails, nil
+}
+
+func UpdateLoanDetail(loanDetails []*entity.LoanDetail, bookDetail *entity.BookDetail, userID int64) (*entity.LoanDetail, error) {
+	var updatedLoanDetail *entity.LoanDetail
+
+	found := false
+	for i := range loanDetails {
+		if loanDetails[i].BookID == *bookDetail.UUID && loanDetails[i].UserID == userID {
+			loanDetails[i].ReturnDate = loanDetails[i].ReturnDate.Add(time.Hour * 24 * 7 * 3)
+			updatedLoanDetail = loanDetails[i]
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		log.Error().Msg(errMsgLoanDetailNotFound)
+		return nil, apperrors.NewNotFoundError(errMsgLoanDetailNotFound)
+	}
+
+	if err := saveLoanDetails(loanDetails); err != nil {
+		log.Error().Err(err).Msg("Failed to save loan details")
+		return nil, apperrors.NewInternalServerError("Error saving loan details")
+	}
+
+	return updatedLoanDetail, nil
+}
+
+func saveLoanDetails(loanDetails []*entity.LoanDetail) error {
+	jsonData, err := json.MarshalIndent(loanDetails, "", "  ")
+	if err != nil {
+		return err
+	}
+
+	err = os.WriteFile(loansJsonFilePath, jsonData, 0644)
 	if err != nil {
 		return err
 	}

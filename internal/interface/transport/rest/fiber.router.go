@@ -39,6 +39,7 @@ func NewRouter(
 	*   LoanServices   *
 	********************/
 	appInstance.Post("/Borrow", loanService.BorrowBookHandler)
+	appInstance.Post("/Extend", loanService.ExtendBookLoanHandler)
 
 	appInstance.All("*", func(c *fiber.Ctx) error {
 		path := c.Path()

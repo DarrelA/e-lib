@@ -49,5 +49,5 @@ func (bs *BookService) GetBookByTitle(title string) (*entity.BookDetail, *apperr
 		}
 	}
 
-	return nil, apperrors.NewBadRequestError(errMsgBookNotFound)
+	return nil, apperrors.NewNotFoundError(errMsgBookNotFound)
 }

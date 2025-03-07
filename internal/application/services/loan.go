@@ -10,4 +10,7 @@ import (
 type LoanService interface {
 	BorrowBookHandler(c *fiber.Ctx) error
 	BorrowBook(title string) (*entity.LoanDetail, *apperrors.RestErr)
+
+	ExtendBookLoanHandler(c *fiber.Ctx) error
+	ExtendBookLoan(title string) (*entity.LoanDetail, *apperrors.RestErr)
 }

@@ -76,3 +76,39 @@ func (ls *LoanService) BorrowBook(title string) (*entity.LoanDetail, *apperrors.
 
 	return loanDetail, nil
 }
+
+func (ls *LoanService) ExtendBookLoanHandler(c *fiber.Ctx) error {
+	var borrowBook dto.BorrowBook
+	if err := c.BodyParser(&borrowBook); err != nil {
+		log.Error().Err(err).Msg(errMsgInvalidRequestBody)
+		return c.Status(fiber.StatusBadRequest).JSON(errMsgInvalidRequestBody)
+	}
+
+	loanDetail, err := ls.ExtendBookLoan(borrowBook.Title)
+	if err != nil {
+		return c.Status(err.Status).JSON(err)
+	}
+	return c.Status(fiber.StatusOK).JSON(loanDetail)
+}
+
+func (ls *LoanService) ExtendBookLoan(title string) (*entity.LoanDetail, *apperrors.RestErr) {
+	loanDetails, err := filedb.LoadLoanDetails()
+	if err != nil {
+		log.Error().Err(err).Msg("")
+		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+	}
+
+	bookDetail, restErr := ls.bookService.GetBookByTitle(title)
+	if restErr != nil {
+		log.Error().Err(restErr).Msgf("")
+		return nil, restErr
+	}
+
+	updatedLoanDetail, err := filedb.UpdateLoanDetail(loanDetails, bookDetail, ls.user.ID)
+	if err != nil {
+		log.Error().Err(err).Msgf("")
+		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+	}
+
+	return updatedLoanDetail, nil
+}
