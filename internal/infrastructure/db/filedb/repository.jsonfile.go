@@ -8,6 +8,7 @@ import (
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
+	"github.com/DarrelA/e-lib/internal/application/repository"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -28,7 +29,13 @@ var (
 	booksMutex sync.Mutex // Add mutex to synchronize access to `books`
 )
 
-func LoadBooksJsonData() []entity.Book {
+type JsonFileService struct{}
+
+func NewJsonFileService() repository.JsonFileRepository {
+	return &JsonFileService{}
+}
+
+func (js JsonFileService) LoadBooksJsonData() []entity.Book {
 	jsonData, err := os.ReadFile(booksJsonTestDataPath)
 	if err != nil {
 		log.Error().Msgf(apperrors.ErrMsgSomethingWentWrong)
@@ -52,7 +59,7 @@ func LoadBooksJsonData() []entity.Book {
 	return books
 }
 
-func SaveLoanDetail(loan *entity.Loan) error {
+func (js JsonFileService) SaveLoanDetail(loan *entity.Loan) error {
 	filePath := loansJsonFilePath
 	existingLoans := []*entity.Loan{}
 	if err := readJSONFromFile(filePath, &existingLoans); err != nil {
@@ -67,7 +74,7 @@ func SaveLoanDetail(loan *entity.Loan) error {
 	return writeJSONToFile(filePath, existingLoans)
 }
 
-func DecrementAvailableCopies(title string) error {
+func (js JsonFileService) DecrementAvailableCopies(title string) error {
 	booksMutex.Lock()         // Acquire lock before accessing `books`
 	defer booksMutex.Unlock() // Ensure lock is released
 
@@ -87,7 +94,7 @@ func DecrementAvailableCopies(title string) error {
 	return nil
 }
 
-func IncrementAvailableCopies(title string) error {
+func (js JsonFileService) IncrementAvailableCopies(title string) error {
 	booksMutex.Lock()         // Acquire lock before accessing `books`
 	defer booksMutex.Unlock() // Ensure lock is released
 
@@ -109,7 +116,7 @@ func saveBooks(books []entity.Book) error {
 	return writeJSONToFile(booksJsonFilePath, books)
 }
 
-func LoadLoanDetails() ([]*entity.Loan, error) {
+func (js JsonFileService) LoadLoanDetails() ([]*entity.Loan, error) {
 	jsonData, err := os.ReadFile(loansJsonFilePath)
 	if err != nil {
 		return nil, err
@@ -125,7 +132,7 @@ func LoadLoanDetails() ([]*entity.Loan, error) {
 	return loanDetails, nil
 }
 
-func UpdateLoanDetail(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (
+func (js JsonFileService) UpdateLoanDetail(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (
 	*entity.Loan, *apperrors.RestErr) {
 	var updatedLoanDetail *entity.Loan
 
@@ -152,7 +159,7 @@ func UpdateLoanDetail(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, us
 	return updatedLoanDetail, nil
 }
 
-func GetLoanStatus(loanDetails []*entity.Loan, loanID uuid.UUID) (bool, bool) {
+func (js JsonFileService) GetLoanStatus(loanDetails []*entity.Loan, loanID uuid.UUID) (bool, bool) {
 	for _, loan := range loanDetails {
 		if loan.UUID == loanID {
 			return true, loan.IsReturned
@@ -161,7 +168,7 @@ func GetLoanStatus(loanDetails []*entity.Loan, loanID uuid.UUID) (bool, bool) {
 	return false, false
 }
 
-func FindLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (*uuid.UUID, *apperrors.RestErr) {
+func (js JsonFileService) FindLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (*uuid.UUID, *apperrors.RestErr) {
 	var loanID *uuid.UUID
 	found := false
 	for _, loan := range loanDetails {
@@ -180,7 +187,7 @@ func FindLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID i
 	return loanID, nil
 }
 
-func SetIsReturned(loanDetails []*entity.Loan, loanID uuid.UUID) *apperrors.RestErr {
+func (js JsonFileService) SetIsReturned(loanDetails []*entity.Loan, loanID uuid.UUID) *apperrors.RestErr {
 	found := false
 	for _, loan := range loanDetails {
 		if loan.UUID == loanID {

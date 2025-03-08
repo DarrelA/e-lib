@@ -6,9 +6,9 @@ import (
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
+	"github.com/DarrelA/e-lib/internal/application/repository"
 	appSvc "github.com/DarrelA/e-lib/internal/application/services"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
-	"github.com/DarrelA/e-lib/internal/infrastructure/db/filedb"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -22,12 +22,16 @@ const (
 )
 
 type LoanService struct {
-	user        entity.User
-	bookService appSvc.BookService
+	user            entity.User
+	bookService     appSvc.BookService
+	jsonFileService repository.JsonFileRepository
 }
 
-func NewLoanService(user entity.User, bookService appSvc.BookService) appSvc.LoanService {
-	return &LoanService{user: user, bookService: bookService}
+func NewLoanService(
+	user entity.User,
+	bookService appSvc.BookService,
+	jsonFileService repository.JsonFileRepository) appSvc.LoanService {
+	return &LoanService{user, bookService, jsonFileService}
 }
 
 func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
@@ -51,7 +55,7 @@ func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.Res
 		return nil, restErr
 	}
 
-	loanDetails, err := filedb.LoadLoanDetails()
+	loanDetails, err := ls.jsonFileService.LoadLoanDetails()
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
@@ -80,11 +84,11 @@ func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.Res
 		ReturnDate:     returnDate,
 		IsReturned:     false,
 	}
-	if err := filedb.SaveLoanDetail(newLoan); err != nil {
+	if err := ls.jsonFileService.SaveLoanDetail(newLoan); err != nil {
 		log.Error().Err(err).Msg("")
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
-	if err := filedb.DecrementAvailableCopies(title); err != nil {
+	if err := ls.jsonFileService.DecrementAvailableCopies(title); err != nil {
 		log.Error().Err(err).Msg("")
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
@@ -113,7 +117,7 @@ func (ls *LoanService) ExtendBookLoanHandler(c *fiber.Ctx) error {
 }
 
 func (ls *LoanService) ExtendBookLoan(title string) (*dto.LoanDetail, *apperrors.RestErr) {
-	loanDetails, err := filedb.LoadLoanDetails()
+	loanDetails, err := ls.jsonFileService.LoadLoanDetails()
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
@@ -125,7 +129,7 @@ func (ls *LoanService) ExtendBookLoan(title string) (*dto.LoanDetail, *apperrors
 		return nil, restErr
 	}
 
-	updatedLoanDetail, restErr := filedb.UpdateLoanDetail(loanDetails, bookDetail, ls.user.ID)
+	updatedLoanDetail, restErr := ls.jsonFileService.UpdateLoanDetail(loanDetails, bookDetail, ls.user.ID)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return nil, restErr
@@ -162,31 +166,31 @@ func (ls *LoanService) ReturnBook(title string) *apperrors.RestErr {
 		return restErr
 	}
 
-	loanDetails, err := filedb.LoadLoanDetails()
+	loanDetails, err := ls.jsonFileService.LoadLoanDetails()
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
-	loanID, restErr := filedb.FindLoanId(loanDetails, bookDetail, ls.user.ID)
+	loanID, restErr := ls.jsonFileService.FindLoanId(loanDetails, bookDetail, ls.user.ID)
 	if restErr != nil {
 		log.Error().Err(restErr).Msg("")
 		return restErr
 	}
 
-	hasLoan, isReturned := filedb.GetLoanStatus(loanDetails, *loanID)
+	hasLoan, isReturned := ls.jsonFileService.GetLoanStatus(loanDetails, *loanID)
 	if hasLoan && isReturned {
 		return apperrors.NewBadRequestError(errMsgOnlyOneCopy)
 	}
 
 	if hasLoan && !isReturned {
-		if err := filedb.IncrementAvailableCopies(title); err != nil {
+		if err := ls.jsonFileService.IncrementAvailableCopies(title); err != nil {
 			log.Error().Err(err).Msg("")
 			return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 		}
 	}
 
-	if restErr := filedb.SetIsReturned(loanDetails, *loanID); restErr != nil {
+	if restErr := ls.jsonFileService.SetIsReturned(loanDetails, *loanID); restErr != nil {
 		log.Error().Err(err).Msg("")
 		return restErr
 	}

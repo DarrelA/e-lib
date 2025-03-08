@@ -22,11 +22,13 @@ const (
 func main() {
 	logFile := logger.CreateAppLog(logFilePath)
 	logger.NewZeroLogger(logFile)
-	books := filedb.LoadBooksJsonData()
 	user := getDummyUserData()
 
+	jsonFileService := filedb.NewJsonFileService()
+	books := jsonFileService.LoadBooksJsonData()
+
 	bookService := interfaceSvc.NewBookService(books)
-	loanService := interfaceSvc.NewLoanService(user, bookService)
+	loanService := interfaceSvc.NewLoanService(user, bookService, jsonFileService)
 	appInstance := rest.NewRouter(bookService, loanService)
 	rest.StartServer(appInstance, "3000")
 }
