@@ -26,7 +26,7 @@ func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 	title := c.Query("title")
 	if title == "" {
 		log.Error().Msg(errMsgEmptyTitle)
-		return c.Status(fiber.StatusBadRequest).JSON(errMsgEmptyTitle)
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": errMsgEmptyTitle})
 	}
 
 	bookDetail, err := bs.GetBookByTitle(title)

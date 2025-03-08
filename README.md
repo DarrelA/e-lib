@@ -9,6 +9,7 @@
   - [Usage](#usage)
 - [Roadmap](#roadmap)
 - [Acknowledgement](#acknowledgement)
+  - [Packages](#packages)
 
 # About The Project
 
@@ -52,6 +53,14 @@ This is a simple RESTful API to manage loan of e-book in an electronic library. 
 
 # Acknowledgement
 
-- [Fiber](https://docs.gofiber.io/)
-- [zerolog](https://github.com/rs/zerolog)
-- [mockaroo](https://www.mockaroo.com/)
+|                 Tool                  |     Description     |
+| :-----------------------------------: | :-----------------: |
+| [mockaroo](https://www.mockaroo.com/) | Mock data generator |
+
+## Packages
+
+|                    Package                     |                Description                |
+| :--------------------------------------------: | :---------------------------------------: |
+|       [Fiber](https://docs.gofiber.io/)        | Fast and lightweight web framework for Go |
+|    [zerolog](https://github.com/rs/zerolog)    |    Zero-allocation JSON logger for Go     |
+| [testify](https://github.com/stretchr/testify) |            Go testing toolkit             |
