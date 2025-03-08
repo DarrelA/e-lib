@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	"github.com/DarrelA/e-lib/internal/application/repository"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
@@ -31,6 +32,15 @@ func (m *mockJsonFileRepo) SaveLoanDetail(loan *entity.Loan) error {
 
 func (m *mockJsonFileRepo) DecrementAvailableCopies(title string) error {
 	return nil // Simulate decrement
+}
+
+func (m *mockJsonFileRepo) UpdateLoanDetail([]*entity.Loan, *dto.BookDetail, int64) (*entity.Loan, *apperrors.RestErr) {
+	now := time.Now()
+	return &entity.Loan{
+		NameOfBorrower: "User1",
+		LoanDate:       now,
+		ReturnDate:     now.Add(time.Hour * 24 * 7 * 3),
+	}, nil
 }
 
 func TestRoutes(t *testing.T) {
@@ -89,7 +99,7 @@ func TestRoutes(t *testing.T) {
 			expectedBody dto.LoanDetail
 		}{
 			{
-				description:  "Successfully borrow book",
+				description:  "Successfully borrow book for 4 weeks",
 				route:        "/Borrow",
 				method:       http.MethodPost,
 				requestBody:  dto.BorrowBook{Title: "Anna"},
@@ -128,6 +138,66 @@ func TestRoutes(t *testing.T) {
 				expectedReturnDate := actualLoan.LoanDate.Add(time.Hour * 24 * 7 * 4)
 				assert.True(t, expectedReturnDate.Equal(actualLoan.ReturnDate),
 					"ReturnDate should be 4 weeks after LoanDate (expected %s, got %s)", expectedReturnDate, actualLoan.ReturnDate)
+			})
+		}
+	})
+
+	t.Run("ExtendBook", func(t *testing.T) {
+		expectedLoan := dto.LoanDetail{
+			BookTitle:      "Anna",
+			NameOfBorrower: "User1",
+			LoanDate:       time.Time{},
+			ReturnDate:     time.Time{},
+		}
+
+		tests := []struct {
+			description  string
+			route        string
+			method       string
+			requestBody  dto.BorrowBook
+			expectedCode int
+			expectedBody dto.LoanDetail
+		}{
+			{
+				description:  "Successfully extend the loan of the book by 3 weeks",
+				route:        "/Extend",
+				method:       http.MethodPost,
+				requestBody:  dto.BorrowBook{Title: "Anna"},
+				expectedCode: http.StatusOK,
+				expectedBody: expectedLoan,
+			},
+		}
+
+		for _, test := range tests {
+			t.Run(test.description, func(t *testing.T) {
+				reqBody, _ := json.Marshal(test.requestBody)
+				req := httptest.NewRequest(test.method, test.route, bytes.NewReader(reqBody))
+				req.Header.Set("Content-Type", "application/json")
+
+				resp, err := app.Test(req)
+				assert.Nil(t, err)
+				assert.Equal(t, test.expectedCode, resp.StatusCode)
+
+				body, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()
+
+				var actualLoan dto.LoanDetail
+				err = json.Unmarshal(body, &actualLoan)
+				assert.Nil(t, err)
+
+				// Check non-date fields
+				assert.Equal(t, test.expectedBody.BookTitle, actualLoan.BookTitle, "Book title mismatch")
+				assert.Equal(t, test.expectedBody.NameOfBorrower, actualLoan.NameOfBorrower, "Borrower name mismatch")
+
+				// Check LoanDate is recent (within 5 seconds of current UTC time)
+				nowUTC := time.Now().UTC()
+				loanDateUTC := actualLoan.LoanDate.UTC()
+				assert.WithinDuration(t, nowUTC, loanDateUTC, 5*time.Second, "LoanDate should be within 5 seconds of now")
+
+				// Check ReturnDate is exactly 3 weeks after LoanDate
+				expectedReturnDate := actualLoan.LoanDate.Add(time.Hour * 24 * 7 * 3)
+				assert.True(t, expectedReturnDate.Equal(actualLoan.ReturnDate),
+					"ReturnDate should be 3 weeks after LoanDate (expected %s, got %s)", expectedReturnDate, actualLoan.ReturnDate)
 			})
 		}
 	})
