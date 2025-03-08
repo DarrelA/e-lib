@@ -9,167 +9,126 @@ import (
 	"testing"
 	"time"
 
-	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
-	appSvc "github.com/DarrelA/e-lib/internal/application/services"
+	"github.com/DarrelA/e-lib/internal/application/repository"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	interfaceSvc "github.com/DarrelA/e-lib/internal/interface/services"
-	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
-// Fixed timestamps
-var (
-	loanDate   = time.Date(2024, 3, 8, 11, 0, 0, 0, time.FixedZone("UTC+8", 8*60*60))
-	returnDate = loanDate.Add(time.Hour * 24 * 7 * 4) // 4 weeks
-)
-
-type mockLoanService struct {
-	user        entity.User
-	bookService appSvc.BookService
+type mockJsonFileRepo struct {
+	repository.JsonFileRepository
 }
 
-func (m *mockLoanService) BorrowBookHandler(c *fiber.Ctx) error {
-	var borrowBook dto.BorrowBook
-	if err := c.BodyParser(&borrowBook); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON("Invalid request Body")
-	}
-
-	loanDetail, err := m.BorrowBook(borrowBook.Title)
-	if err != nil {
-		return c.Status(err.Status).JSON(err)
-	}
-	return c.Status(fiber.StatusOK).JSON(loanDetail)
+func (m *mockJsonFileRepo) LoadLoanDetails() ([]*entity.Loan, error) {
+	return []*entity.Loan{}, nil // Simulate empty loans
 }
 
-func (m *mockLoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.RestErr) {
-	return &dto.LoanDetail{
-		BookTitle:      title,
-		NameOfBorrower: m.user.Name,
-		LoanDate:       loanDate,
-		ReturnDate:     returnDate,
-	}, nil
+func (m *mockJsonFileRepo) SaveLoanDetail(loan *entity.Loan) error {
+	return nil // Simulate successful save
 }
 
-func (m *mockLoanService) ExtendBookLoanHandler(c *fiber.Ctx) error { return nil }
-func (m *mockLoanService) ExtendBookLoan(title string) (*dto.LoanDetail, *apperrors.RestErr) {
-	return nil, nil
+func (m *mockJsonFileRepo) DecrementAvailableCopies(title string) error {
+	return nil // Simulate decrement
 }
 
-func (m *mockLoanService) ReturnBookHandler(c *fiber.Ctx) error       { return nil }
-func (m *mockLoanService) ReturnBook(title string) *apperrors.RestErr { return nil }
-
-func TestGetBookByTitle(t *testing.T) {
-	// Setup test data with dummy UUID
+func TestRoutes(t *testing.T) {
+	// Shared setup
+	testUser := entity.User{ID: 1, Name: "User1"}
 	bookUUID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
-	testBook := entity.Book{
-		UUID:            &bookUUID,
-		Title:           "Anna",
-		AvailableCopies: 10,
-	}
-
+	testBook := entity.Book{UUID: &bookUUID, Title: "Anna", AvailableCopies: 10}
 	bookService := interfaceSvc.NewBookService([]entity.Book{testBook})
-	loanService := &mockLoanService{}
+	mockRepo := &mockJsonFileRepo{}
+	loanService := interfaceSvc.NewLoanService(testUser, bookService, mockRepo)
 	app := NewRouter(bookService, loanService)
 
-	tests := []struct {
-		description  string
-		route        string
-		expectedCode int
-		expectedBody string
-	}{
-		{
-			description:  "Get existing book by title",
-			route:        "/Book?title=Anna",
-			expectedCode: http.StatusOK,
-			expectedBody: `{"uuid":"123e4567-e89b-12d3-a456-426614174000","title":"Anna","available_copies":10}`,
-		},
-	}
+	t.Run("GetBookByTitle", func(t *testing.T) {
+		tests := []struct {
+			description  string
+			route        string
+			expectedCode int
+			expectedBody string
+		}{
+			{
+				description:  "Get existing book by title",
+				route:        "/Book?title=Anna",
+				expectedCode: http.StatusOK,
+				expectedBody: `{"uuid":"123e4567-e89b-12d3-a456-426614174000","title":"Anna","available_copies":10}`,
+			},
+		}
 
-	for _, test := range tests {
-		// Create httptest request
-		req := httptest.NewRequest("GET", test.route, nil)
+		for _, test := range tests {
+			t.Run(test.description, func(t *testing.T) {
+				req := httptest.NewRequest("GET", test.route, nil)
+				resp, err := app.Test(req)
+				assert.Nil(t, err)
+				assert.Equal(t, test.expectedCode, resp.StatusCode)
 
-		// Use Fiber's Test method with httptest recorder
-		resp, err := app.Test(req)
-		assert.Nilf(t, err, test.description)
-		assert.Equalf(t, test.expectedCode, resp.StatusCode, test.description)
+				body, err := io.ReadAll(resp.Body)
+				assert.Nil(t, err)
+				assert.JSONEq(t, test.expectedBody, string(body))
+			})
+		}
+	})
 
-		body, err := io.ReadAll(resp.Body)
-		assert.Nilf(t, err, test.description)
-		assert.JSONEqf(t, test.expectedBody, string(body), test.description)
-	}
-}
+	t.Run("BorrowBook", func(t *testing.T) {
+		expectedLoan := dto.LoanDetail{
+			BookTitle:      "Anna",
+			NameOfBorrower: "User1",
+			LoanDate:       time.Time{},
+			ReturnDate:     time.Time{},
+		}
 
-func TestBorrowBook(t *testing.T) {
-	testUser := entity.User{
-		ID:   1,
-		Name: "User1",
-	}
+		tests := []struct {
+			description  string
+			route        string
+			method       string
+			requestBody  dto.BorrowBook
+			expectedCode int
+			expectedBody dto.LoanDetail
+		}{
+			{
+				description:  "Successfully borrow book",
+				route:        "/Borrow",
+				method:       http.MethodPost,
+				requestBody:  dto.BorrowBook{Title: "Anna"},
+				expectedCode: http.StatusOK,
+				expectedBody: expectedLoan,
+			},
+		}
 
-	bookUUID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
-	testBook := entity.Book{
-		UUID:            &bookUUID,
-		Title:           "Anna",
-		AvailableCopies: 10,
-	}
+		for _, test := range tests {
+			t.Run(test.description, func(t *testing.T) {
+				reqBody, _ := json.Marshal(test.requestBody)
+				req := httptest.NewRequest(test.method, test.route, bytes.NewReader(reqBody))
+				req.Header.Set("Content-Type", "application/json")
 
-	bookService := interfaceSvc.NewBookService([]entity.Book{testBook})
-	loanService := &mockLoanService{
-		user:        testUser,
-		bookService: bookService,
-	}
+				resp, err := app.Test(req)
+				assert.Nil(t, err)
+				assert.Equal(t, test.expectedCode, resp.StatusCode)
 
-	app := NewRouter(bookService, loanService)
+				body, _ := io.ReadAll(resp.Body)
+				resp.Body.Close()
 
-	expectedLoan := dto.LoanDetail{
-		BookTitle:      "Anna",
-		NameOfBorrower: "User1",
-		LoanDate:       loanDate,
-		ReturnDate:     returnDate,
-	}
+				var actualLoan dto.LoanDetail
+				err = json.Unmarshal(body, &actualLoan)
+				assert.Nil(t, err)
 
-	tests := []struct {
-		description  string
-		route        string
-		method       string
-		requestBody  dto.BorrowBook
-		expectedCode int
-		expectedBody dto.LoanDetail
-	}{
-		{
-			description:  "Successfully borrow book",
-			route:        "/Borrow",
-			method:       http.MethodPost,
-			requestBody:  dto.BorrowBook{Title: "Anna"},
-			expectedCode: http.StatusOK,
-			expectedBody: expectedLoan,
-		},
-	}
+				// Check non-date fields
+				assert.Equal(t, test.expectedBody.BookTitle, actualLoan.BookTitle, "Book title mismatch")
+				assert.Equal(t, test.expectedBody.NameOfBorrower, actualLoan.NameOfBorrower, "Borrower name mismatch")
 
-	for _, test := range tests {
-		reqBody, _ := json.Marshal(test.requestBody)
-		req := httptest.NewRequest(test.method, test.route, bytes.NewReader(reqBody))
-		req.Header.Set("Content-Type", "application/json")
+				// Check LoanDate is recent (within 5 seconds of current UTC time)
+				nowUTC := time.Now().UTC()
+				loanDateUTC := actualLoan.LoanDate.UTC()
+				assert.WithinDuration(t, nowUTC, loanDateUTC, 5*time.Second, "LoanDate should be within 5 seconds of now")
 
-		resp, err := app.Test(req)
-		assert.Nilf(t, err, test.description)
-		assert.Equalf(t, test.expectedCode, resp.StatusCode, test.description)
-
-		body, _ := io.ReadAll(resp.Body)
-		resp.Body.Close()
-
-		var actualLoan dto.LoanDetail
-		err = json.Unmarshal(body, &actualLoan)
-		assert.Nilf(t, err, test.description)
-
-		// Compare individual fields with time equality check
-		assert.Equal(t, test.expectedBody.BookTitle, actualLoan.BookTitle, "Book title mismatch")
-		assert.Equal(t, test.expectedBody.NameOfBorrower, actualLoan.NameOfBorrower, "Borrower name mismatch")
-		assert.True(t, test.expectedBody.LoanDate.Equal(actualLoan.LoanDate),
-			"LoanDate mismatch (expected %s, got %s)", test.expectedBody.LoanDate, actualLoan.LoanDate)
-		assert.True(t, test.expectedBody.ReturnDate.Equal(actualLoan.ReturnDate),
-			"ReturnDate mismatch (expected %s, got %s)", test.expectedBody.ReturnDate, actualLoan.ReturnDate)
-	}
+				// Check ReturnDate is exactly 4 weeks after LoanDate
+				expectedReturnDate := actualLoan.LoanDate.Add(time.Hour * 24 * 7 * 4)
+				assert.True(t, expectedReturnDate.Equal(actualLoan.ReturnDate),
+					"ReturnDate should be 4 weeks after LoanDate (expected %s, got %s)", expectedReturnDate, actualLoan.ReturnDate)
+			})
+		}
+	})
 }
