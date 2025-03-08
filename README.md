@@ -40,7 +40,21 @@ This is a simple RESTful API to manage loan of e-book in an electronic library. 
 
 ## Usage
 
-<p align="right">(<a href="#readme-top">back to top</a>)</p>
+Refer to `Makefile` for all the commands.
+
+- `make dev`
+- `GET`: `localhost:3000/Book?title=Badlands`
+- `POST`: `localhost:3000/Borrow` (with JSON body)
+- `POST`: `localhost:3000/Extend` (with JSON body)
+- `POST`: `localhost:3000/Return` (with JSON body)
+
+**JSON Body Example (Common for POST requests):**
+
+```json
+{
+  "title": "Badlands"
+}
+```
 
 # Roadmap
 
@@ -50,6 +64,8 @@ This is a simple RESTful API to manage loan of e-book in an electronic library. 
 - [ ] Add validation for each API (e.g., missing or invalid input).
 - [ ] Write tests for coverage and regression.
 - [ ] Integrate SingPass MyInfo for user authentication.
+
+<p align="right">(<a href="#readme-top">back to top</a>)</p>
 
 # Acknowledgement
 
