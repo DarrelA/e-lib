@@ -1,1 +1,4 @@
+.env.dev
+.env.prod
+
 app.log

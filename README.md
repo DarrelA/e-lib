@@ -38,6 +38,16 @@ This is a simple RESTful API to manage loan of e-book in an electronic library. 
 - [PostgreSQL Downloads](https://www.postgresql.org/download/)
 - [Homebrew - postgresql@14](https://formulae.brew.sh/formula/postgresql@14)
 
+```sh
+psql -U postgres
+CREATE USER your_username WITH PASSWORD 'your_password';
+CREATE DATABASE elib WITH OWNER your_username;
+GRANT ALL PRIVILEGES ON DATABASE elib TO your_username;
+
+\l  # List databases
+\du # List users
+```
+
 ## Usage
 
 Refer to `Makefile` for all the commands.
