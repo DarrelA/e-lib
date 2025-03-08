@@ -3,6 +3,7 @@ package rest
 import (
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
@@ -57,12 +58,15 @@ func TestGetBookByTitle(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		req, _ := http.NewRequest("GET", test.route, nil)
-		res, err := app.Test(req, -1)
-		assert.Nilf(t, err, test.description)
-		assert.Equalf(t, test.expectedCode, res.StatusCode, test.description)
+		// Create httptest request
+		req := httptest.NewRequest("GET", test.route, nil)
 
-		body, err := io.ReadAll(res.Body)
+		// Use Fiber's Test method with httptest recorder
+		resp, err := app.Test(req)
+		assert.Nilf(t, err, test.description)
+		assert.Equalf(t, test.expectedCode, resp.StatusCode, test.description)
+
+		body, err := io.ReadAll(resp.Body)
 		assert.Nilf(t, err, test.description)
 		assert.JSONEqf(t, test.expectedBody, string(body), test.description)
 	}
