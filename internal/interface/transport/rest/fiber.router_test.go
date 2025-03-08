@@ -43,6 +43,23 @@ func (m *mockJsonFileRepo) UpdateLoanDetail([]*entity.Loan, *dto.BookDetail, int
 	}, nil
 }
 
+func (m *mockJsonFileRepo) FindLoanId([]*entity.Loan, *dto.BookDetail, int64) (*uuid.UUID, *apperrors.RestErr) {
+	id := uuid.MustParse("00000000-0000-0000-0000-000000000001")
+	return &id, nil
+}
+
+func (m *mockJsonFileRepo) GetLoanStatus([]*entity.Loan, uuid.UUID) (bool, bool) {
+	return true, false // Simulate return values for hasLoan and isReturned
+}
+
+func (m *mockJsonFileRepo) IncrementAvailableCopies(title string) error {
+	return nil // Simulate increment
+}
+
+func (m *mockJsonFileRepo) SetIsReturned([]*entity.Loan, uuid.UUID) *apperrors.RestErr {
+	return nil // Simulate setting SetIsReturned to true
+}
+
 func TestRoutes(t *testing.T) {
 	// Shared setup
 	testUser := entity.User{ID: 1, Name: "User1"}
@@ -198,6 +215,42 @@ func TestRoutes(t *testing.T) {
 				expectedReturnDate := actualLoan.LoanDate.Add(time.Hour * 24 * 7 * 3)
 				assert.True(t, expectedReturnDate.Equal(actualLoan.ReturnDate),
 					"ReturnDate should be 3 weeks after LoanDate (expected %s, got %s)", expectedReturnDate, actualLoan.ReturnDate)
+			})
+		}
+	})
+
+	t.Run("ReturnBook", func(t *testing.T) {
+		tests := []struct {
+			description  string
+			route        string
+			method       string
+			requestBody  dto.BorrowBook
+			expectedCode int
+			expectedBody string
+		}{
+			{
+				description:  "Successfully return the book",
+				route:        "/Return",
+				method:       http.MethodPost,
+				requestBody:  dto.BorrowBook{Title: "Anna"},
+				expectedCode: http.StatusOK,
+				expectedBody: `{"status":"success"}`,
+			},
+		}
+
+		for _, test := range tests {
+			t.Run(test.description, func(t *testing.T) {
+				reqBody, _ := json.Marshal(test.requestBody)
+				req := httptest.NewRequest(test.method, test.route, bytes.NewReader(reqBody))
+				req.Header.Set("Content-Type", "application/json")
+
+				resp, err := app.Test(req)
+				assert.Nil(t, err)
+				assert.Equal(t, test.expectedCode, resp.StatusCode)
+
+				body, err := io.ReadAll(resp.Body)
+				assert.Nil(t, err)
+				assert.JSONEq(t, test.expectedBody, string(body))
 			})
 		}
 	})
