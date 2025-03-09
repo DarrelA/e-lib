@@ -38,11 +38,10 @@ func main() {
 	// Use `WaitGroup` when you just need to wait for tasks to complete without exchanging data.
 	// Use channels when you need to signal task completion and possibly exchange data.
 	var wg sync.WaitGroup
-	wg.Add(1)
-	appServiceInstance := initializeServer(&wg, user, config, bookRepository, loanRepository)
+	appInstance := initializeServer(&wg, user, config, bookRepository, loanRepository)
 
 	wg.Wait()
-	waitForShutdown(appServiceInstance, postgresConn)
+	waitForShutdown(&wg, appInstance, postgresConn)
 	logFile.Close()
 	os.Exit(0)
 }
@@ -75,26 +74,28 @@ func initializeDatabases(config *config.EnvConfig) (*entity.User, repository.RDB
 func initializeServer(
 	wg *sync.WaitGroup, user *entity.User,
 	config *config.EnvConfig, bookRepository pgdb.BookRepository, loanRepository pgdb.LoanRepository) *fiber.App {
-	defer wg.Done()
+
+	wg.Add(1)
 
 	bookService := interfaceSvc.NewBookService(bookRepository)
 	loanService := interfaceSvc.NewLoanService(*user, bookRepository, loanRepository)
 	appInstance := rest.NewRouter(bookService, loanService)
 
 	go func() {
+		defer wg.Done()
 		rest.StartServer(appInstance, config.Port)
 	}()
 	return appInstance
 }
 
-func waitForShutdown(appServiceInstance *fiber.App, postgresConn repository.RDBMS) {
+func waitForShutdown(wg *sync.WaitGroup, appInstance *fiber.App, postgresConn repository.RDBMS) {
 	sigChan := make(chan os.Signal, 1) // Create a channel to listen for OS signals
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	<-sigChan // Block until a signal is received
 	log.Debug().Msg("received termination signal, shutting down")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	if err := appServiceInstance.ShutdownWithContext(ctx); err != nil {
+	if err := appInstance.ShutdownWithContext(ctx); err != nil {
 		log.Err(err).Msg("failed to gracefully shutdown the server")
 	}
 
@@ -102,6 +103,7 @@ func waitForShutdown(appServiceInstance *fiber.App, postgresConn repository.RDBM
 	log.Info().Msg("app instance has shutdown")
 
 	postgresConn.DisconnectFromPostgres()
+	wg.Done()
 }
 
 func getDummyUserData() *entity.User {
