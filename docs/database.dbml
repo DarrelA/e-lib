@@ -1,0 +1,35 @@
+Table "users" {
+  "id" int4 [pk, not null, increment]
+  "name" varchar(255) [not null]
+  "email" varchar(255) [unique, not null]
+  "created_at" timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table "books" {
+  "uuid" uuid [pk, not null]
+  "title" varchar(255) [unique, not null]
+  "available_copies" int4 [not null, default: 0]
+  "created_at" timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  "updated_at" timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+}
+
+Table "loans" {
+  "uuid" uuid [pk, not null]
+  "user_id" int8 [not null]
+  "book_uuid" uuid [not null]
+  "name_of_borrower" varchar(255) [not null]
+  "loan_date" timestamptz [not null, default: `CURRENT_TIMESTAMP`]
+  "return_date" timestamptz [not null]
+  "is_returned" bool [not null, default: false]
+
+  Indexes {
+    book_uuid [type: btree, name: "idx_loans_book_uuid"]
+    is_returned [type: btree, name: "idx_loans_is_returned"]
+    user_id [type: btree, name: "idx_loans_user_id"]
+  }
+}
+
+Ref "loans_book_uuid_fkey":"books"."uuid" < "loans"."book_uuid"
+
+Ref "loans_user_id_fkey":"users"."id" < "loans"."user_id"

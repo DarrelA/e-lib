@@ -40,11 +40,11 @@ This is a simple RESTful API to manage loan of e-book in an electronic library. 
 
 ```sh
 psql -U postgres
-CREATE USER your_username WITH PASSWORD 'your_password';
-CREATE DATABASE elib WITH OWNER your_username;
-GRANT ALL PRIVILEGES ON DATABASE elib TO your_username;
+CREATE USER myuser WITH PASSWORD 'mypassword';
+CREATE DATABASE elib WITH OWNER myuser;
+GRANT ALL PRIVILEGES ON DATABASE elib TO myuser;
 
-psql -d elib -U your_username
+psql -d elib -U myuser
 \l  # List databases
 \du # List users
 \dt # List tables
@@ -53,6 +53,12 @@ SELECT * FROM books LIMIT 10;
 SELECT * FROM loans LIMIT 10;
 \d loans # Describe the table
 \d+ loans # Describe the table
+```
+
+![elib-er-diagram](/docs/images/elib-er-diagram.svg)
+
+```sh
+dbdocs db2dbml postgres "postgresql://myuser:mypassword@localhost/elib" -o database.dbml
 ```
 
 ## Usage
@@ -97,3 +103,4 @@ Refer to `Makefile` for all the commands.
 |       [Fiber](https://docs.gofiber.io/)        | Fast and lightweight web framework for Go |
 |    [zerolog](https://github.com/rs/zerolog)    |    Zero-allocation JSON logger for Go     |
 | [testify](https://github.com/stretchr/testify) |            Go testing toolkit             |
+|   [dbdiagram.io](https://dbdiagram.io/home)    |  A free, simple tool to draw ER diagrams  |

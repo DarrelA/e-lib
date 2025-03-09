@@ -34,13 +34,13 @@ func main() {
 	logFile := logger.CreateAppLog(logFilePath)
 	logger.NewZeroLogger(logFile)
 	config := initializeEnv()
-	postgresConn, bookRepository := initializeDatabases(config)
+	user, postgresConn, bookRepository := initializeDatabases(config)
 
 	// Use `WaitGroup` when you just need to wait for tasks to complete without exchanging data.
 	// Use channels when you need to signal task completion and possibly exchange data.
 	var wg sync.WaitGroup
 	wg.Add(1)
-	appServiceInstance := initializeServer(&wg, config, bookRepository)
+	appServiceInstance := initializeServer(&wg, user, config, bookRepository)
 
 	wg.Wait()
 	waitForShutdown(appServiceInstance, postgresConn)
@@ -60,24 +60,27 @@ func initializeEnv() *config.EnvConfig {
 	return config
 }
 
-func initializeDatabases(config *config.EnvConfig) (repository.RDBMS, pgdb.BookRepository) {
+func initializeDatabases(config *config.EnvConfig) (*entity.User, repository.RDBMS, pgdb.BookRepository) {
+	user := getDummyUserData()
+
 	postgresDB := &postgres.PostgresDB{}
 	postgresConnection := postgresDB.ConnectToPostgres(config.PostgresDBConfig)
 	postgresDBInstance := postgresConnection.(*postgres.PostgresDB) // Type assert postgresDB to *postgres.PostgresDB
-	seedRepository := postgres.NewRepository(postgresDBInstance.Dbpool)
+	seedRepository := postgres.NewRepository(postgresDBInstance.Dbpool, user)
 	seedRepository.SeedBooks(pathToBooksJsonFile)
 	bookRepository := postgres.NewBookRepository(postgresDBInstance.Dbpool)
-	return postgresConnection, bookRepository
+	return user, postgresConnection, bookRepository
 }
 
-func initializeServer(wg *sync.WaitGroup, config *config.EnvConfig, bookRepository pgdb.BookRepository) *fiber.App {
+func initializeServer(
+	wg *sync.WaitGroup, user *entity.User,
+	config *config.EnvConfig, bookRepository pgdb.BookRepository) *fiber.App {
 	defer wg.Done()
-	user := getDummyUserData()
 
 	jsonFileService := filedb.NewJsonFileService()
 
 	bookService := interfaceSvc.NewBookService(bookRepository)
-	loanService := interfaceSvc.NewLoanService(user, bookService, jsonFileService)
+	loanService := interfaceSvc.NewLoanService(*user, bookService, jsonFileService)
 	appInstance := rest.NewRouter(bookService, loanService)
 
 	go func() {
@@ -103,7 +106,7 @@ func waitForShutdown(appServiceInstance *fiber.App, postgresConn repository.RDBM
 	postgresConn.DisconnectFromPostgres()
 }
 
-func getDummyUserData() entity.User {
+func getDummyUserData() *entity.User {
 	url := "https://sandbox.api.myinfo.gov.sg/com/v4/person-sample/S9812381D"
 	resp, err := http.Get(url)
 	if err != nil {
@@ -123,7 +126,7 @@ func getDummyUserData() entity.User {
 	}
 
 	currentTime := time.Now()
-	userDetail := entity.User{
+	userDetail := &entity.User{
 		ID:        1,
 		Name:      myInfoResponse.Name.Value,
 		Email:     myInfoResponse.Email.Value,

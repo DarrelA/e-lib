@@ -25,6 +25,12 @@ const (
 )
 
 const (
+	insertDummyUser = `
+		INSERT INTO users (name, email, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW())
+		ON CONFLICT (email) DO NOTHING;  -- Skip duplicates based on email
+	`
+
 	insertBooksStmt = `
 		INSERT INTO Books (uuid, title, available_copies, created_at, updated_at)
 		VALUES (gen_random_uuid(), lower($1), $2, NOW(), NOW())
@@ -34,7 +40,7 @@ const (
 
 type SeedRepository struct{ dbpool *pgxpool.Pool }
 
-func NewRepository(dbpool *pgxpool.Pool) postgres.SeedRepository {
+func NewRepository(dbpool *pgxpool.Pool, user *entity.User) postgres.SeedRepository {
 	ctx := context.Background()
 	sqlData, err := os.ReadFile(pathToSqlFile)
 	if err != nil {
@@ -45,6 +51,8 @@ func NewRepository(dbpool *pgxpool.Pool) postgres.SeedRepository {
 	if err != nil {
 		log.Error().Err(err).Msg(errMsgUnableToExecuteSQLScript)
 	}
+
+	dbpool.QueryRow(ctx, insertDummyUser, user.Name, user.Email)
 
 	log.Info().Msg("successfully created the tables")
 	return &SeedRepository{dbpool}

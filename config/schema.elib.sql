@@ -1,6 +1,6 @@
 -- Create the User table
 CREATE TABLE IF NOT EXISTS Users(
-  id bigint PRIMARY KEY,
+  id serial PRIMARY KEY,
   name varchar(255) NOT NULL,
   email varchar(255) UNIQUE NOT NULL, -- Email should be unique
   created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
