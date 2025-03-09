@@ -2,15 +2,14 @@ package services
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	appSvc "github.com/DarrelA/e-lib/internal/application/services"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/DarrelA/e-lib/internal/domain/repository/filedb"
+	repository "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
 	"github.com/gofiber/fiber/v2"
-	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
 
@@ -22,16 +21,17 @@ const (
 )
 
 type LoanService struct {
-	user            entity.User
-	bookService     appSvc.BookService
+	user        entity.User
+	bookService appSvc.BookService
+	postgresDB  repository.LoanRepository
+
 	jsonFileService filedb.JsonFileRepository
 }
 
 func NewLoanService(
-	user entity.User,
-	bookService appSvc.BookService,
+	user entity.User, bookService appSvc.BookService, postgresDB repository.LoanRepository,
 	jsonFileService filedb.JsonFileRepository) appSvc.LoanService {
-	return &LoanService{user, bookService, jsonFileService}
+	return &LoanService{user, bookService, postgresDB, jsonFileService}
 }
 
 func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
@@ -55,51 +55,17 @@ func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.Res
 		return nil, restErr
 	}
 
-	loanDetails, err := ls.jsonFileService.LoadLoanDetails()
-	if err != nil {
-		log.Error().Err(err).Msg("")
-		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
-	}
-
-	for _, loan := range loanDetails {
-		if loan.BookUUID == bookDetail.UUID && loan.UserID == ls.user.ID && !loan.IsReturned {
-			return nil, apperrors.NewBadRequestError(errMsgOnlyOneCopy)
-		}
-	}
-
 	if bookDetail.AvailableCopies <= 0 {
 		log.Warn().Msgf(warnMsgOutOfStock, title)
 		return nil, apperrors.NewBadRequestError(fmt.Sprintf(warnMsgOutOfStock, title))
 	}
 
-	now := time.Now()
-	returnDate := now.Add(time.Hour * 24 * 7 * 4) // Loan for 4 weeks
-
-	newLoan := &entity.Loan{
-		UUID:           uuid.New(),
-		UserID:         ls.user.ID, // Use the user from the service context.
-		BookUUID:       bookDetail.UUID,
-		NameOfBorrower: ls.user.Name,
-		LoanDate:       now,
-		ReturnDate:     returnDate,
-		IsReturned:     false,
-	}
-	if err := ls.jsonFileService.SaveLoanDetail(newLoan); err != nil {
-		log.Error().Err(err).Msg("")
-		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
-	}
-	if err := ls.jsonFileService.DecrementAvailableCopies(title); err != nil {
-		log.Error().Err(err).Msg("")
-		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+	loanDetail, err := ls.postgresDB.BorrowBook(ls.user, bookDetail)
+	if err != nil {
+		return nil, err
 	}
 
-	loan := &dto.LoanDetail{
-		BookTitle:      title,
-		NameOfBorrower: newLoan.NameOfBorrower,
-		LoanDate:       newLoan.LoanDate,
-		ReturnDate:     newLoan.ReturnDate,
-	}
-	return loan, nil
+	return loanDetail, nil
 }
 
 func (ls *LoanService) ExtendBookLoanHandler(c *fiber.Ctx) error {

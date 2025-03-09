@@ -33,6 +33,18 @@ func (m *mockBookRepository) GetBook(title string) (*dto.BookDetail, *apperrors.
 	return book, nil
 }
 
+type mockLoanRepository struct {
+	mock.Mock
+}
+
+func (m *mockLoanRepository) BorrowBook(user entity.User, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
+	args := m.Called(user, bookDetail.UUID)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(*apperrors.RestErr)
+	}
+	return args.Get(0).(*dto.LoanDetail), nil
+}
+
 type mockJsonFileRepo struct {
 	filedb.JsonFileRepository
 }
@@ -80,13 +92,22 @@ func TestRoutes(t *testing.T) {
 	testUser := entity.User{ID: 1, Name: "User1"}
 	bookUUID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
 	testBook := entity.Book{UUID: &bookUUID, Title: "Anna", AvailableCopies: 10}
+	expectedLoan := dto.LoanDetail{
+		BookTitle:      "Anna",
+		NameOfBorrower: "User1",
+		LoanDate:       time.Time{},
+		ReturnDate:     time.Time{},
+	}
 
 	mockBookRepo := new(mockBookRepository)
 	mockBookRepo.On("GetBook", "Anna").Return(&testBook, nil)
 	bookService := interfaceSvc.NewBookService(mockBookRepo)
 
+	mockLoanRepo := new(mockLoanRepository)
+
 	mockRepo := &mockJsonFileRepo{}
-	loanService := interfaceSvc.NewLoanService(testUser, bookService, mockRepo)
+	mockLoanRepo.On("BorrowBook", testUser, bookUUID).Return(&expectedLoan, nil)
+	loanService := interfaceSvc.NewLoanService(testUser, bookService, mockLoanRepo, mockRepo)
 	app := NewRouter(bookService, loanService)
 
 	t.Run("GetBookByTitle", func(t *testing.T) {
@@ -119,13 +140,6 @@ func TestRoutes(t *testing.T) {
 	})
 
 	t.Run("BorrowBook", func(t *testing.T) {
-		expectedLoan := dto.LoanDetail{
-			BookTitle:      "Anna",
-			NameOfBorrower: "User1",
-			LoanDate:       time.Time{},
-			ReturnDate:     time.Time{},
-		}
-
 		tests := []struct {
 			description  string
 			route        string
