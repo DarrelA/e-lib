@@ -20,7 +20,9 @@ import (
 )
 
 const (
-	bookTitle = "Anna"
+	upperCaseBookTitle = "Anna"
+	lowerCaseBookTitle = "anna"
+	user               = "User1"
 )
 
 type mockBookRepository struct {
@@ -66,28 +68,28 @@ func (m *mockLoanRepository) ReturnBook(user_id int64, book_uuid uuid.UUID) *app
 
 func TestRoutes(t *testing.T) {
 	// Shared setup
-	testUser := entity.User{ID: 1, Name: "User1"}
+	testUser := entity.User{ID: 1, Name: user}
 	bookUUID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
-	expectedBook := dto.BookDetail{UUID: bookUUID, Title: "anna", AvailableCopies: 10}
+	expectedBook := dto.BookDetail{UUID: bookUUID, Title: lowerCaseBookTitle, AvailableCopies: 10}
 
 	now := time.Now().UTC()
 	expectedLoan := dto.LoanDetail{
-		BookTitle:      "anna",
-		NameOfBorrower: "User1",
+		BookTitle:      lowerCaseBookTitle,
+		NameOfBorrower: user,
 		LoanDate:       now,
 		ReturnDate:     now.Add(time.Hour * 24 * 7 * 4),
 	}
 
 	extendedReturnDate := now.Add(time.Hour * 24 * 7 * 3)
 	extendedLoan := dto.LoanDetail{
-		BookTitle:      "anna",
-		NameOfBorrower: "User1",
+		BookTitle:      lowerCaseBookTitle,
+		NameOfBorrower: user,
 		LoanDate:       now,
 		ReturnDate:     extendedReturnDate,
 	}
 
 	mockBookRepo := new(mockBookRepository)
-	mockBookRepo.On("GetBook", "anna").Return(&expectedBook, nil)
+	mockBookRepo.On("GetBook", lowerCaseBookTitle).Return(&expectedBook, nil)
 
 	bookService := interfaceSvc.NewBookService(mockBookRepo)
 
@@ -108,7 +110,7 @@ func TestRoutes(t *testing.T) {
 		}{
 			{
 				description:  "Get existing book by title",
-				route:        fmt.Sprintf("/Book?title=%s", bookTitle),
+				route:        fmt.Sprintf("/Book?title=%s", upperCaseBookTitle),
 				expectedCode: http.StatusOK,
 				expectedBody: `{"uuid":"123e4567-e89b-12d3-a456-426614174000","title":"anna","available_copies":10}`,
 			},
@@ -141,7 +143,7 @@ func TestRoutes(t *testing.T) {
 				description:  "Successfully borrow book for 4 weeks",
 				route:        "/Borrow",
 				method:       http.MethodPost,
-				requestBody:  dto.BorrowBook{Title: bookTitle},
+				requestBody:  dto.BorrowBook{Title: upperCaseBookTitle},
 				expectedCode: http.StatusOK,
 				expectedBody: expectedLoan,
 			},
@@ -194,7 +196,7 @@ func TestRoutes(t *testing.T) {
 				description:  "Successfully extend the loan of the book by 3 weeks",
 				route:        "/Extend",
 				method:       http.MethodPost,
-				requestBody:  dto.BorrowBook{Title: bookTitle},
+				requestBody:  dto.BorrowBook{Title: upperCaseBookTitle},
 				expectedCode: http.StatusOK,
 				expectedBody: expectedLoan,
 			},
@@ -246,7 +248,7 @@ func TestRoutes(t *testing.T) {
 				description:  "Successfully return the book",
 				route:        "/Return",
 				method:       http.MethodPost,
-				requestBody:  dto.BorrowBook{Title: bookTitle},
+				requestBody:  dto.BorrowBook{Title: upperCaseBookTitle},
 				expectedCode: http.StatusOK,
 				expectedBody: `{"status":"success"}`,
 			},
