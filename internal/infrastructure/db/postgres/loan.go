@@ -24,7 +24,7 @@ func NewLoanRepository(dbpool *pgxpool.Pool) postgres.LoanRepository {
 }
 
 var (
-	queryCheckExistingLoan = "SELECT COUNT(*) FROM Loans WHERE user_id = $1 AND book_uuid = $2 AND is_returned = FALSE"
+	queryCheckExistingLoan = "SELECT COUNT(*) FROM loans WHERE user_id = $1 AND book_uuid = $2 AND is_returned = FALSE"
 
 	queryDecrementAvailableCopies = `
 		UPDATE books
@@ -33,8 +33,15 @@ var (
 	`
 
 	insertLoan = `
-		INSERT INTO Loans (uuid, user_id, book_uuid, name_of_borrower, loan_date, return_date)
+		INSERT INTO loans (uuid, user_id, book_uuid, name_of_borrower, loan_date, return_date)
     VALUES (gen_random_uuid(), $1, $2, $3, NOW(), NOW() + interval '4 weeks')
+		returning name_of_borrower, loan_date, return_date
+	`
+
+	queryExtendReturnDate = `
+		UPDATE loans SET return_date = return_date + interval '3 weeks'
+		WHERE user_id = $1 AND book_uuid = $2 AND is_returned = FALSE
+		returning name_of_borrower, return_date, return_date
 	`
 )
 
@@ -75,9 +82,7 @@ func (lr LoanRepository) BorrowBook(user entity.User, bookDetail *dto.BookDetail
 	}
 
 	loanDetail := &dto.LoanDetail{BookTitle: bookDetail.Title}
-	err = lr.dbpool.QueryRow(ctx, insertLoan+
-		" returning name_of_borrower, loan_date, return_date",
-		user.ID, bookDetail.UUID, user.Name).
+	err = lr.dbpool.QueryRow(ctx, insertLoan, user.ID, bookDetail.UUID, user.Name).
 		Scan(&loanDetail.NameOfBorrower, &loanDetail.LoanDate, &loanDetail.ReturnDate)
 
 	if err != nil {
@@ -89,6 +94,19 @@ func (lr LoanRepository) BorrowBook(user entity.User, bookDetail *dto.BookDetail
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+	}
+
+	return loanDetail, nil
+}
+
+func (lr LoanRepository) ExtendBookLoan(user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
+	loanDetail := &dto.LoanDetail{BookTitle: bookDetail.Title}
+	err := lr.dbpool.QueryRow(context.Background(), queryExtendReturnDate, user_id, bookDetail.UUID).
+		Scan(&loanDetail.NameOfBorrower, &loanDetail.LoanDate, &loanDetail.ReturnDate)
+
+	if err != nil {
+		log.Error().Err(err).Msg("")
+		return nil, apperrors.NewInternalServerError(errMsgBookNotFound)
 	}
 
 	return loanDetail, nil

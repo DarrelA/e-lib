@@ -8,4 +8,5 @@ import (
 
 type LoanRepository interface {
 	BorrowBook(user entity.User, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr)
+	ExtendBookLoan(user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr)
 }

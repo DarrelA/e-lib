@@ -45,6 +45,14 @@ func (m *mockLoanRepository) BorrowBook(user entity.User, bookDetail *dto.BookDe
 	return args.Get(0).(*dto.LoanDetail), nil
 }
 
+func (m *mockLoanRepository) ExtendBookLoan(user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
+	args := m.Called(user_id, bookDetail.UUID)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(*apperrors.RestErr)
+	}
+	return args.Get(0).(*dto.LoanDetail), nil
+}
+
 type mockJsonFileRepo struct {
 	filedb.JsonFileRepository
 }
