@@ -7,6 +7,7 @@
     - [Golang](#golang)
     - [PostgreSQL](#postgresql)
   - [Usage](#usage)
+- [Integration Test](#integration-test)
 - [Roadmap](#roadmap)
 - [Acknowledgement](#acknowledgement)
   - [Packages](#packages)
@@ -77,6 +78,13 @@ Refer to `Makefile` for all the commands.
 {
   "title": "Badlands"
 }
+```
+
+# Integration Test
+
+```sh
+chmod +x ./deployment/scripts/integration_test.sh
+chmod +x ./deployment/scripts/wrap_test_for_coverage.sh
 ```
 
 # Roadmap

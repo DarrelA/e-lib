@@ -1,4 +1,8 @@
 .env.dev
 .env.prod
 
+e-lib-it
 app.log
+covdatafiles
+testdata/reports/it_coverage.html
+testdata/reports/responses.json
