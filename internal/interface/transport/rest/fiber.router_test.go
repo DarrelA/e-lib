@@ -16,7 +16,22 @@ import (
 	interfaceSvc "github.com/DarrelA/e-lib/internal/interface/services"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
+
+type mockBookRepository struct {
+	mock.Mock
+	ExpectedBook *entity.Book
+}
+
+func (m *mockBookRepository) GetBook(title string) (*dto.BookDetail, *apperrors.RestErr) {
+	args := m.Called(title)
+	book, ok := args.Get(0).(*dto.BookDetail)
+	if !ok {
+		return nil, args.Get(1).(*apperrors.RestErr)
+	}
+	return book, nil
+}
 
 type mockJsonFileRepo struct {
 	filedb.JsonFileRepository
@@ -65,7 +80,11 @@ func TestRoutes(t *testing.T) {
 	testUser := entity.User{ID: 1, Name: "User1"}
 	bookUUID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
 	testBook := entity.Book{UUID: &bookUUID, Title: "Anna", AvailableCopies: 10}
-	bookService := interfaceSvc.NewBookService([]entity.Book{testBook})
+
+	mockBookRepo := new(mockBookRepository)
+	mockBookRepo.On("GetBook", "Anna").Return(&testBook, nil)
+	bookService := interfaceSvc.NewBookService(mockBookRepo)
+
 	mockRepo := &mockJsonFileRepo{}
 	loanService := interfaceSvc.NewLoanService(testUser, bookService, mockRepo)
 	app := NewRouter(bookService, loanService)

@@ -15,6 +15,7 @@ import (
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/DarrelA/e-lib/internal/domain/repository"
+	pgdb "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
 	"github.com/DarrelA/e-lib/internal/infrastructure/db/filedb"
 	"github.com/DarrelA/e-lib/internal/infrastructure/db/postgres"
 	logger "github.com/DarrelA/e-lib/internal/infrastructure/logger/zerolog"
@@ -33,13 +34,13 @@ func main() {
 	logFile := logger.CreateAppLog(logFilePath)
 	logger.NewZeroLogger(logFile)
 	config := initializeEnv()
-	postgresConn := initializeDatabases(config)
+	postgresConn, bookRepository := initializeDatabases(config)
 
 	// Use `WaitGroup` when you just need to wait for tasks to complete without exchanging data.
 	// Use channels when you need to signal task completion and possibly exchange data.
 	var wg sync.WaitGroup
 	wg.Add(1)
-	appServiceInstance := initializeServer(&wg, config)
+	appServiceInstance := initializeServer(&wg, config, bookRepository)
 
 	wg.Wait()
 	waitForShutdown(appServiceInstance, postgresConn)
@@ -59,23 +60,23 @@ func initializeEnv() *config.EnvConfig {
 	return config
 }
 
-func initializeDatabases(config *config.EnvConfig) repository.RDBMS {
+func initializeDatabases(config *config.EnvConfig) (repository.RDBMS, pgdb.BookRepository) {
 	postgresDB := &postgres.PostgresDB{}
 	postgresConnection := postgresDB.ConnectToPostgres(config.PostgresDBConfig)
 	postgresDBInstance := postgresConnection.(*postgres.PostgresDB) // Type assert postgresDB to *postgres.PostgresDB
 	seedRepository := postgres.NewRepository(postgresDBInstance.Dbpool)
 	seedRepository.SeedBooks(pathToBooksJsonFile)
-	return postgresConnection
+	bookRepository := postgres.NewBookRepository(postgresDBInstance.Dbpool)
+	return postgresConnection, bookRepository
 }
 
-func initializeServer(wg *sync.WaitGroup, config *config.EnvConfig) *fiber.App {
+func initializeServer(wg *sync.WaitGroup, config *config.EnvConfig, bookRepository pgdb.BookRepository) *fiber.App {
 	defer wg.Done()
 	user := getDummyUserData()
 
 	jsonFileService := filedb.NewJsonFileService()
-	books := jsonFileService.LoadBooksJsonData()
 
-	bookService := interfaceSvc.NewBookService(books)
+	bookService := interfaceSvc.NewBookService(bookRepository)
 	loanService := interfaceSvc.NewLoanService(user, bookService, jsonFileService)
 	appInstance := rest.NewRouter(bookService, loanService)
 

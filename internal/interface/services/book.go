@@ -1,10 +1,12 @@
 package services
 
 import (
+	"strings"
+
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	appSvc "github.com/DarrelA/e-lib/internal/application/services"
-	"github.com/DarrelA/e-lib/internal/domain/entity"
+	repository "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog/log"
 )
@@ -15,11 +17,11 @@ const (
 )
 
 type BookService struct {
-	Books []entity.Book
+	PostgresDB repository.BookRepository
 }
 
-func NewBookService(books []entity.Book) appSvc.BookService {
-	return &BookService{Books: books}
+func NewBookService(postgresDB repository.BookRepository) appSvc.BookService {
+	return &BookService{PostgresDB: postgresDB}
 }
 
 func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
@@ -38,16 +40,10 @@ func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 }
 
 func (bs *BookService) GetBookByTitle(title string) (*dto.BookDetail, *apperrors.RestErr) {
-	for _, book := range bs.Books {
-		if book.Title == title {
-			bookDetail := dto.BookDetail{
-				UUID:            *book.UUID,
-				Title:           book.Title,
-				AvailableCopies: book.AvailableCopies,
-			}
-			return &bookDetail, nil
-		}
+	bookDetail, err := bs.PostgresDB.GetBook(strings.ToLower(title))
+	if err != nil {
+		return nil, apperrors.NewNotFoundError(errMsgBookNotFound)
 	}
 
-	return nil, apperrors.NewNotFoundError(errMsgBookNotFound)
+	return bookDetail, nil
 }
