@@ -81,7 +81,7 @@ func initializeServer(
 	jsonFileService := filedb.NewJsonFileService()
 
 	bookService := interfaceSvc.NewBookService(bookRepository)
-	loanService := interfaceSvc.NewLoanService(*user, bookService, loanRepository, jsonFileService)
+	loanService := interfaceSvc.NewLoanService(*user, bookRepository, loanRepository, jsonFileService)
 	appInstance := rest.NewRouter(bookService, loanService)
 
 	go func() {

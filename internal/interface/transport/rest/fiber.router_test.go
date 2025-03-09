@@ -107,7 +107,7 @@ func TestRoutes(t *testing.T) {
 
 	mockRepo := &mockJsonFileRepo{}
 	mockLoanRepo.On("BorrowBook", testUser, bookUUID).Return(&expectedLoan, nil)
-	loanService := interfaceSvc.NewLoanService(testUser, bookService, mockLoanRepo, mockRepo)
+	loanService := interfaceSvc.NewLoanService(testUser, mockBookRepo, mockLoanRepo, mockRepo)
 	app := NewRouter(bookService, loanService)
 
 	t.Run("GetBookByTitle", func(t *testing.T) {

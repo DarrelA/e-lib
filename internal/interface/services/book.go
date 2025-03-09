@@ -17,11 +17,11 @@ const (
 )
 
 type BookService struct {
-	postgresDB repository.BookRepository
+	bookPGDB repository.BookRepository
 }
 
-func NewBookService(postgresDB repository.BookRepository) appSvc.BookService {
-	return &BookService{postgresDB}
+func NewBookService(bookPGDB repository.BookRepository) appSvc.BookService {
+	return &BookService{bookPGDB}
 }
 
 func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
@@ -40,7 +40,7 @@ func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 }
 
 func (bs *BookService) GetBookByTitle(title string) (*dto.BookDetail, *apperrors.RestErr) {
-	bookDetail, err := bs.postgresDB.GetBook(strings.ToLower(title))
+	bookDetail, err := bs.bookPGDB.GetBook(strings.ToLower(title))
 	if err != nil {
 		return nil, apperrors.NewNotFoundError(errMsgBookNotFound)
 	}

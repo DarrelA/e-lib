@@ -21,17 +21,17 @@ const (
 )
 
 type LoanService struct {
-	user        entity.User
-	bookService appSvc.BookService
-	postgresDB  repository.LoanRepository
+	user       entity.User
+	bookPGDB   repository.BookRepository
+	postgresDB repository.LoanRepository
 
 	jsonFileService filedb.JsonFileRepository
 }
 
 func NewLoanService(
-	user entity.User, bookService appSvc.BookService, postgresDB repository.LoanRepository,
+	user entity.User, bookPGDB repository.BookRepository, loanPGDB repository.LoanRepository,
 	jsonFileService filedb.JsonFileRepository) appSvc.LoanService {
-	return &LoanService{user, bookService, postgresDB, jsonFileService}
+	return &LoanService{user, bookPGDB, loanPGDB, jsonFileService}
 }
 
 func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
@@ -49,7 +49,7 @@ func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
 }
 
 func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.RestErr) {
-	bookDetail, restErr := ls.bookService.GetBookByTitle(title)
+	bookDetail, restErr := ls.bookPGDB.GetBook(title)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return nil, restErr
@@ -89,7 +89,7 @@ func (ls *LoanService) ExtendBookLoan(title string) (*dto.LoanDetail, *apperrors
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
-	bookDetail, restErr := ls.bookService.GetBookByTitle(title)
+	bookDetail, restErr := ls.bookPGDB.GetBook(title)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return nil, restErr
@@ -126,7 +126,7 @@ func (ls *LoanService) ReturnBookHandler(c *fiber.Ctx) error {
 }
 
 func (ls *LoanService) ReturnBook(title string) *apperrors.RestErr {
-	bookDetail, restErr := ls.bookService.GetBookByTitle(title)
+	bookDetail, restErr := ls.bookPGDB.GetBook(title)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return restErr
