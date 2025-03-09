@@ -9,5 +9,5 @@ import (
 // BookService defines the interface for managing book-related operations (e.g., retrieving book information).
 type BookService interface {
 	GetBookByTitleHandler(c *fiber.Ctx) error
-	GetBookByTitle(title string) (*dto.BookDetail, *apperrors.RestErr)
+	GetBookByTitle(bookRequest dto.BookRequest) (*dto.BookDetail, *apperrors.RestErr)
 }

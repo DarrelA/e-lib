@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"strings"
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
@@ -30,7 +29,7 @@ var (
 
 func (br BookRepository) GetBook(title string) (*dto.BookDetail, *apperrors.RestErr) {
 	bookDetail := &dto.BookDetail{}
-	err := br.dbpool.QueryRow(context.Background(), queryGetBook, strings.ToLower(title)).
+	err := br.dbpool.QueryRow(context.Background(), queryGetBook, title).
 		Scan(&bookDetail.UUID, &bookDetail.Title, &bookDetail.AvailableCopies)
 
 	if err != nil {

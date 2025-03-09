@@ -2,7 +2,6 @@ package services
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
@@ -32,29 +31,24 @@ func NewLoanService(
 }
 
 func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
-	var borrowBook dto.BorrowBook
-	if err := c.BodyParser(&borrowBook); err != nil {
-		log.Error().Err(err).Msg(errMsgInvalidRequestBody)
-		return c.Status(fiber.StatusBadRequest).JSON(errMsgInvalidRequestBody)
-	}
-
-	loanDetail, err := ls.BorrowBook(strings.ToLower(borrowBook.Title))
+	borrowBook := c.Locals("bookTitleKey").(dto.BookRequest)
+	loanDetail, err := ls.BorrowBook(borrowBook)
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
 	return c.Status(fiber.StatusOK).JSON(loanDetail)
 }
 
-func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.RestErr) {
-	bookDetail, restErr := ls.bookPGDB.GetBook(strings.ToLower(title))
+func (ls *LoanService) BorrowBook(bookRequest dto.BookRequest) (*dto.LoanDetail, *apperrors.RestErr) {
+	bookDetail, restErr := ls.bookPGDB.GetBook(bookRequest.Title)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return nil, restErr
 	}
 
 	if bookDetail.AvailableCopies <= 0 {
-		log.Warn().Msgf(warnMsgOutOfStock, title)
-		return nil, apperrors.NewBadRequestError(fmt.Sprintf(warnMsgOutOfStock, title))
+		log.Warn().Msgf(warnMsgOutOfStock, bookRequest)
+		return nil, apperrors.NewBadRequestError(fmt.Sprintf(warnMsgOutOfStock, bookRequest))
 	}
 
 	loanDetail, err := ls.loanPGDB.BorrowBook(ls.user, bookDetail)
@@ -66,21 +60,16 @@ func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.Res
 }
 
 func (ls *LoanService) ExtendBookLoanHandler(c *fiber.Ctx) error {
-	var borrowBook dto.BorrowBook
-	if err := c.BodyParser(&borrowBook); err != nil {
-		log.Error().Err(err).Msg(errMsgInvalidRequestBody)
-		return c.Status(fiber.StatusBadRequest).JSON(errMsgInvalidRequestBody)
-	}
-
-	loanDetail, err := ls.ExtendBookLoan(strings.ToLower(borrowBook.Title))
+	borrowBook := c.Locals("bookTitleKey").(dto.BookRequest)
+	loanDetail, err := ls.ExtendBookLoan(borrowBook)
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
 	return c.Status(fiber.StatusOK).JSON(loanDetail)
 }
 
-func (ls *LoanService) ExtendBookLoan(title string) (*dto.LoanDetail, *apperrors.RestErr) {
-	bookDetail, restErr := ls.bookPGDB.GetBook(strings.ToLower(title))
+func (ls *LoanService) ExtendBookLoan(bookRequest dto.BookRequest) (*dto.LoanDetail, *apperrors.RestErr) {
+	bookDetail, restErr := ls.bookPGDB.GetBook(bookRequest.Title)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return nil, restErr
@@ -96,21 +85,16 @@ func (ls *LoanService) ExtendBookLoan(title string) (*dto.LoanDetail, *apperrors
 }
 
 func (ls *LoanService) ReturnBookHandler(c *fiber.Ctx) error {
-	var borrowBook dto.BorrowBook
-	if err := c.BodyParser(&borrowBook); err != nil {
-		log.Error().Err(err).Msg(errMsgInvalidRequestBody)
-		return c.Status(fiber.StatusBadRequest).JSON(errMsgInvalidRequestBody)
-	}
-
-	err := ls.ReturnBook(strings.ToLower(borrowBook.Title))
+	borrowBook := c.Locals("bookTitleKey").(dto.BookRequest)
+	err := ls.ReturnBook(borrowBook)
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success"})
 }
 
-func (ls *LoanService) ReturnBook(title string) *apperrors.RestErr {
-	bookDetail, restErr := ls.bookPGDB.GetBook(strings.ToLower(title))
+func (ls *LoanService) ReturnBook(bookRequest dto.BookRequest) *apperrors.RestErr {
+	bookDetail, restErr := ls.bookPGDB.GetBook(bookRequest.Title)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return restErr

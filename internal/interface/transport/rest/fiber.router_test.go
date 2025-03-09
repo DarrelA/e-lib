@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -31,7 +32,7 @@ type mockBookRepository struct {
 }
 
 func (m *mockBookRepository) GetBook(title string) (*dto.BookDetail, *apperrors.RestErr) {
-	args := m.Called(title)
+	args := m.Called(strings.ToLower(title))
 	book, ok := args.Get(0).(*dto.BookDetail)
 	if !ok {
 		return nil, args.Get(1).(*apperrors.RestErr)
@@ -89,11 +90,10 @@ func TestRoutes(t *testing.T) {
 	}
 
 	mockBookRepo := new(mockBookRepository)
-	mockBookRepo.On("GetBook", lowerCaseBookTitle).Return(&expectedBook, nil)
-
 	bookService := interfaceSvc.NewBookService(mockBookRepo)
 
 	mockLoanRepo := new(mockLoanRepository)
+	mockBookRepo.On("GetBook", lowerCaseBookTitle).Return(&expectedBook, nil)
 	mockLoanRepo.On("BorrowBook", testUser, bookUUID).Return(&expectedLoan, nil)
 	mockLoanRepo.On("ExtendBookLoan", testUser.ID, &expectedBook).Return(&extendedLoan, nil)
 	mockLoanRepo.On("ReturnBook", testUser.ID, bookUUID).Return(nil, nil)
@@ -135,7 +135,7 @@ func TestRoutes(t *testing.T) {
 			description  string
 			route        string
 			method       string
-			requestBody  dto.BorrowBook
+			requestBody  dto.BookRequest
 			expectedCode int
 			expectedBody dto.LoanDetail
 		}{
@@ -143,7 +143,7 @@ func TestRoutes(t *testing.T) {
 				description:  "Successfully borrow book for 4 weeks",
 				route:        "/Borrow",
 				method:       http.MethodPost,
-				requestBody:  dto.BorrowBook{Title: upperCaseBookTitle},
+				requestBody:  dto.BookRequest{Title: upperCaseBookTitle},
 				expectedCode: http.StatusOK,
 				expectedBody: expectedLoan,
 			},
@@ -188,7 +188,7 @@ func TestRoutes(t *testing.T) {
 			description  string
 			route        string
 			method       string
-			requestBody  dto.BorrowBook
+			requestBody  dto.BookRequest
 			expectedCode int
 			expectedBody dto.LoanDetail
 		}{
@@ -196,7 +196,7 @@ func TestRoutes(t *testing.T) {
 				description:  "Successfully extend the loan of the book by 3 weeks",
 				route:        "/Extend",
 				method:       http.MethodPost,
-				requestBody:  dto.BorrowBook{Title: upperCaseBookTitle},
+				requestBody:  dto.BookRequest{Title: upperCaseBookTitle},
 				expectedCode: http.StatusOK,
 				expectedBody: expectedLoan,
 			},
@@ -240,7 +240,7 @@ func TestRoutes(t *testing.T) {
 			description  string
 			route        string
 			method       string
-			requestBody  dto.BorrowBook
+			requestBody  dto.BookRequest
 			expectedCode int
 			expectedBody string
 		}{
@@ -248,7 +248,7 @@ func TestRoutes(t *testing.T) {
 				description:  "Successfully return the book",
 				route:        "/Return",
 				method:       http.MethodPost,
-				requestBody:  dto.BorrowBook{Title: upperCaseBookTitle},
+				requestBody:  dto.BookRequest{Title: upperCaseBookTitle},
 				expectedCode: http.StatusOK,
 				expectedBody: `{"status":"success"}`,
 			},

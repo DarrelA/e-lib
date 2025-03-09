@@ -8,6 +8,6 @@ type BookDetail struct {
 	AvailableCopies int       `json:"available_copies"`
 }
 
-type BorrowBook struct {
-	Title string `json:"title"`
+type BookRequest struct {
+	Title string `json:"title" validate:"required,max=200"`
 }

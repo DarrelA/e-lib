@@ -3,6 +3,7 @@ package rest
 import (
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	appSvc "github.com/DarrelA/e-lib/internal/application/services"
+	mw "github.com/DarrelA/e-lib/internal/interface/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog/log"
 )
@@ -33,14 +34,14 @@ func NewRouter(
 	/********************
 	 *   BookServices   *
 	 ********************/
-	appInstance.Get("/Book", bookService.GetBookByTitleHandler)
+	appInstance.Get("/Book", mw.InputValidatorForGET, bookService.GetBookByTitleHandler)
 
 	/********************
 	*   LoanServices   *
 	********************/
-	appInstance.Post("/Borrow", loanService.BorrowBookHandler)
-	appInstance.Post("/Extend", loanService.ExtendBookLoanHandler)
-	appInstance.Post("/Return", loanService.ReturnBookHandler)
+	appInstance.Post("/Borrow", mw.InputValidatorForPOST, loanService.BorrowBookHandler)
+	appInstance.Post("/Extend", mw.InputValidatorForPOST, loanService.ExtendBookLoanHandler)
+	appInstance.Post("/Return", mw.InputValidatorForPOST, loanService.ReturnBookHandler)
 
 	appInstance.All("*", func(c *fiber.Ctx) error {
 		path := c.Path()
