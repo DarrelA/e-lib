@@ -8,8 +8,8 @@ import (
 
 type Loan struct {
 	UUID           uuid.UUID `json:"uuid"`
-	UserID         int64     `json:"user_id"`   // Foreign key to UserDetail
-	BookUUID       uuid.UUID `json:"book_uuid"` // Foreign key to BookDetail
+	UserID         int64     `json:"user_id"`   // Foreign key to User
+	BookUUID       uuid.UUID `json:"book_uuid"` // Foreign key to Book
 	NameOfBorrower string    `json:"name_of_borrower"`
 	LoanDate       time.Time `json:"loan_date"`
 	ReturnDate     time.Time `json:"return_date"`

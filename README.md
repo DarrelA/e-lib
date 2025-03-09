@@ -44,8 +44,15 @@ CREATE USER your_username WITH PASSWORD 'your_password';
 CREATE DATABASE elib WITH OWNER your_username;
 GRANT ALL PRIVILEGES ON DATABASE elib TO your_username;
 
+psql -d elib -U your_username
 \l  # List databases
 \du # List users
+\dt # List tables
+SELECT * FROM users LIMIT 10;
+SELECT * FROM books LIMIT 10;
+SELECT * FROM loans LIMIT 10;
+\d loans # Describe the table
+\d+ loans # Describe the table
 ```
 
 ## Usage

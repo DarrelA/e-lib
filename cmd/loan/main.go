@@ -61,6 +61,8 @@ func initializeEnv() *config.EnvConfig {
 func initializeDatabases(config *config.EnvConfig) repository.RDBMS {
 	postgresDB := &postgres.PostgresDB{}
 	postgresConnection := postgresDB.ConnectToPostgres(config.PostgresDBConfig)
+	postgresDBInstance := postgresConnection.(*postgres.PostgresDB) // Type assert postgresDB to *postgres.PostgresDB
+	postgres.NewRepository(postgresDBInstance.Dbpool)
 	return postgresConnection
 }
 
