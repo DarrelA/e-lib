@@ -26,6 +26,10 @@ func NewRouter(
 ) *fiber.App {
 	log.Info().Msg("creating fiber instances")
 	appInstance := fiber.New()
+
+	log.Info().Msg("connecting middlewares")
+	appInstance.Use(mw.Logger)
+
 	log.Info().Msg("setting up routes")
 	appInstance.Get("/health", func(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success"})

@@ -83,7 +83,7 @@ Refer to `Makefile` for all the commands.
 
 - [x] Implement simple in-memory storage with pre-populated books on startup.
 - [x] Integrate PostgreSQL for persistent data storage.
-- [ ] Implement logging for API requests and responses.
+- [x] Implement logging for API requests and responses.
 - [x] Add validation for each API (e.g., missing or invalid input).
 - [ ] Write tests for coverage and regression.
 - [ ] Integrate SingPass MyInfo for user authentication.
