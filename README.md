@@ -82,7 +82,7 @@ Refer to `Makefile` for all the commands.
 # Roadmap
 
 - [x] Implement simple in-memory storage with pre-populated books on startup.
-- [ ] Integrate PostgreSQL for persistent data storage.
+- [x] Integrate PostgreSQL for persistent data storage.
 - [ ] Implement logging for API requests and responses.
 - [ ] Add validation for each API (e.g., missing or invalid input).
 - [ ] Write tests for coverage and regression.

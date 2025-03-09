@@ -16,7 +16,6 @@ import (
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/DarrelA/e-lib/internal/domain/repository"
 	pgdb "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
-	"github.com/DarrelA/e-lib/internal/infrastructure/db/filedb"
 	"github.com/DarrelA/e-lib/internal/infrastructure/db/postgres"
 	logger "github.com/DarrelA/e-lib/internal/infrastructure/logger/zerolog"
 	interfaceSvc "github.com/DarrelA/e-lib/internal/interface/services"
@@ -78,10 +77,8 @@ func initializeServer(
 	config *config.EnvConfig, bookRepository pgdb.BookRepository, loanRepository pgdb.LoanRepository) *fiber.App {
 	defer wg.Done()
 
-	jsonFileService := filedb.NewJsonFileService()
-
 	bookService := interfaceSvc.NewBookService(bookRepository)
-	loanService := interfaceSvc.NewLoanService(*user, bookRepository, loanRepository, jsonFileService)
+	loanService := interfaceSvc.NewLoanService(*user, bookRepository, loanRepository)
 	appInstance := rest.NewRouter(bookService, loanService)
 
 	go func() {

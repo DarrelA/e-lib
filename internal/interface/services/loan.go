@@ -7,7 +7,6 @@ import (
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	appSvc "github.com/DarrelA/e-lib/internal/application/services"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
-	"github.com/DarrelA/e-lib/internal/domain/repository/filedb"
 	repository "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog/log"
@@ -24,14 +23,11 @@ type LoanService struct {
 	user     entity.User
 	bookPGDB repository.BookRepository
 	loanPGDB repository.LoanRepository
-
-	jsonFileService filedb.JsonFileRepository
 }
 
 func NewLoanService(
-	user entity.User, bookPGDB repository.BookRepository, loanPGDB repository.LoanRepository,
-	jsonFileService filedb.JsonFileRepository) appSvc.LoanService {
-	return &LoanService{user, bookPGDB, loanPGDB, jsonFileService}
+	user entity.User, bookPGDB repository.BookRepository, loanPGDB repository.LoanRepository) appSvc.LoanService {
+	return &LoanService{user, bookPGDB, loanPGDB}
 }
 
 func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
@@ -119,32 +115,9 @@ func (ls *LoanService) ReturnBook(title string) *apperrors.RestErr {
 		return restErr
 	}
 
-	loanDetails, err := ls.jsonFileService.LoadLoanDetails()
-	if err != nil {
-		log.Error().Err(err).Msg("")
-		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
-	}
-
-	loanID, restErr := ls.jsonFileService.FindLoanId(loanDetails, bookDetail, ls.user.ID)
+	restErr = ls.loanPGDB.ReturnBook(ls.user.ID, bookDetail.UUID)
 	if restErr != nil {
-		log.Error().Err(restErr).Msg("")
-		return restErr
-	}
-
-	hasLoan, isReturned := ls.jsonFileService.GetLoanStatus(loanDetails, *loanID)
-	if hasLoan && isReturned {
-		return apperrors.NewBadRequestError(errMsgOnlyOneCopy)
-	}
-
-	if hasLoan && !isReturned {
-		if err := ls.jsonFileService.IncrementAvailableCopies(title); err != nil {
-			log.Error().Err(err).Msg("")
-			return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
-		}
-	}
-
-	if restErr := ls.jsonFileService.SetIsReturned(loanDetails, *loanID); restErr != nil {
-		log.Error().Err(err).Msg("")
+		log.Error().Err(restErr).Msgf("")
 		return restErr
 	}
 

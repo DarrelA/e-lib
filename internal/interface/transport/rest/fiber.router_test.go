@@ -12,7 +12,6 @@ import (
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
-	"github.com/DarrelA/e-lib/internal/domain/repository/filedb"
 	interfaceSvc "github.com/DarrelA/e-lib/internal/interface/services"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -53,46 +52,12 @@ func (m *mockLoanRepository) ExtendBookLoan(user_id int64, bookDetail *dto.BookD
 	return args.Get(0).(*dto.LoanDetail), nil
 }
 
-type mockJsonFileRepo struct {
-	filedb.JsonFileRepository
-}
-
-func (m *mockJsonFileRepo) LoadLoanDetails() ([]*entity.Loan, error) {
-	return []*entity.Loan{}, nil // Simulate empty loans
-}
-
-func (m *mockJsonFileRepo) SaveLoanDetail(loan *entity.Loan) error {
-	return nil // Simulate successful save
-}
-
-func (m *mockJsonFileRepo) DecrementAvailableCopies(title string) error {
-	return nil // Simulate decrement
-}
-
-func (m *mockJsonFileRepo) UpdateLoanDetail([]*entity.Loan, *dto.BookDetail, int64) (*entity.Loan, *apperrors.RestErr) {
-	now := time.Now()
-	return &entity.Loan{
-		NameOfBorrower: "User1",
-		LoanDate:       now,
-		ReturnDate:     now.Add(time.Hour * 24 * 7 * 3),
-	}, nil
-}
-
-func (m *mockJsonFileRepo) FindLoanId([]*entity.Loan, *dto.BookDetail, int64) (*uuid.UUID, *apperrors.RestErr) {
-	id := uuid.MustParse("00000000-0000-0000-0000-000000000001")
-	return &id, nil
-}
-
-func (m *mockJsonFileRepo) GetLoanStatus([]*entity.Loan, uuid.UUID) (bool, bool) {
-	return true, false // Simulate return values for hasLoan and isReturned
-}
-
-func (m *mockJsonFileRepo) IncrementAvailableCopies(title string) error {
-	return nil // Simulate increment
-}
-
-func (m *mockJsonFileRepo) SetIsReturned([]*entity.Loan, uuid.UUID) *apperrors.RestErr {
-	return nil // Simulate setting SetIsReturned to true
+func (m *mockLoanRepository) ReturnBook(user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
+	args := m.Called(user_id, book_uuid)
+	if args.Get(0) == nil {
+		return args.Get(1).(*apperrors.RestErr)
+	}
+	return nil
 }
 
 func TestRoutes(t *testing.T) {
@@ -113,9 +78,8 @@ func TestRoutes(t *testing.T) {
 
 	mockLoanRepo := new(mockLoanRepository)
 
-	mockRepo := &mockJsonFileRepo{}
 	mockLoanRepo.On("BorrowBook", testUser, bookUUID).Return(&expectedLoan, nil)
-	loanService := interfaceSvc.NewLoanService(testUser, mockBookRepo, mockLoanRepo, mockRepo)
+	loanService := interfaceSvc.NewLoanService(testUser, mockBookRepo, mockLoanRepo)
 	app := NewRouter(bookService, loanService)
 
 	t.Run("GetBookByTitle", func(t *testing.T) {
