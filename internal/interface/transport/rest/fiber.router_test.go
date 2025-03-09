@@ -11,15 +11,15 @@ import (
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
-	"github.com/DarrelA/e-lib/internal/application/repository"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
+	"github.com/DarrelA/e-lib/internal/domain/repository/filedb"
 	interfaceSvc "github.com/DarrelA/e-lib/internal/interface/services"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 )
 
 type mockJsonFileRepo struct {
-	repository.JsonFileRepository
+	filedb.JsonFileRepository
 }
 
 func (m *mockJsonFileRepo) LoadLoanDetails() ([]*entity.Loan, error) {

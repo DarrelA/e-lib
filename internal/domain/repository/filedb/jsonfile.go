@@ -1,4 +1,4 @@
-package repository
+package filedb
 
 import (
 	"github.com/DarrelA/e-lib/internal/apperrors"

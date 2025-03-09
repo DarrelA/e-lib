@@ -8,8 +8,8 @@ import (
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
-	"github.com/DarrelA/e-lib/internal/application/repository"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
+	"github.com/DarrelA/e-lib/internal/domain/repository/filedb"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
 )
@@ -31,7 +31,7 @@ var (
 
 type JsonFileService struct{}
 
-func NewJsonFileService() repository.JsonFileRepository {
+func NewJsonFileService() filedb.JsonFileRepository {
 	return &JsonFileService{}
 }
 

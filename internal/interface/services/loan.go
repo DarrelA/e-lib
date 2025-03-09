@@ -6,9 +6,9 @@ import (
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
-	"github.com/DarrelA/e-lib/internal/application/repository"
 	appSvc "github.com/DarrelA/e-lib/internal/application/services"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
+	"github.com/DarrelA/e-lib/internal/domain/repository/filedb"
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
 	"github.com/rs/zerolog/log"
@@ -24,13 +24,13 @@ const (
 type LoanService struct {
 	user            entity.User
 	bookService     appSvc.BookService
-	jsonFileService repository.JsonFileRepository
+	jsonFileService filedb.JsonFileRepository
 }
 
 func NewLoanService(
 	user entity.User,
 	bookService appSvc.BookService,
-	jsonFileService repository.JsonFileRepository) appSvc.LoanService {
+	jsonFileService filedb.JsonFileRepository) appSvc.LoanService {
 	return &LoanService{user, bookService, jsonFileService}
 }
 
