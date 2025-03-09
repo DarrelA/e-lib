@@ -25,7 +25,8 @@ import (
 )
 
 const (
-	logFilePath = "app.log"
+	logFilePath         = "app.log"
+	pathToBooksJsonFile = "./testdata/json/books.json"
 )
 
 func main() {
@@ -62,7 +63,8 @@ func initializeDatabases(config *config.EnvConfig) repository.RDBMS {
 	postgresDB := &postgres.PostgresDB{}
 	postgresConnection := postgresDB.ConnectToPostgres(config.PostgresDBConfig)
 	postgresDBInstance := postgresConnection.(*postgres.PostgresDB) // Type assert postgresDB to *postgres.PostgresDB
-	postgres.NewRepository(postgresDBInstance.Dbpool)
+	seedRepository := postgres.NewRepository(postgresDBInstance.Dbpool)
+	seedRepository.SeedBooks(pathToBooksJsonFile)
 	return postgresConnection
 }
 
