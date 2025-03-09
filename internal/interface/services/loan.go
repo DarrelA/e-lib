@@ -2,6 +2,7 @@ package services
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
@@ -37,7 +38,7 @@ func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(errMsgInvalidRequestBody)
 	}
 
-	loanDetail, err := ls.BorrowBook(borrowBook.Title)
+	loanDetail, err := ls.BorrowBook(strings.ToLower(borrowBook.Title))
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
@@ -45,7 +46,7 @@ func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
 }
 
 func (ls *LoanService) BorrowBook(title string) (*dto.LoanDetail, *apperrors.RestErr) {
-	bookDetail, restErr := ls.bookPGDB.GetBook(title)
+	bookDetail, restErr := ls.bookPGDB.GetBook(strings.ToLower(title))
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return nil, restErr
@@ -71,7 +72,7 @@ func (ls *LoanService) ExtendBookLoanHandler(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(errMsgInvalidRequestBody)
 	}
 
-	loanDetail, err := ls.ExtendBookLoan(borrowBook.Title)
+	loanDetail, err := ls.ExtendBookLoan(strings.ToLower(borrowBook.Title))
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
@@ -79,7 +80,7 @@ func (ls *LoanService) ExtendBookLoanHandler(c *fiber.Ctx) error {
 }
 
 func (ls *LoanService) ExtendBookLoan(title string) (*dto.LoanDetail, *apperrors.RestErr) {
-	bookDetail, restErr := ls.bookPGDB.GetBook(title)
+	bookDetail, restErr := ls.bookPGDB.GetBook(strings.ToLower(title))
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return nil, restErr
@@ -101,7 +102,7 @@ func (ls *LoanService) ReturnBookHandler(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusBadRequest).JSON(errMsgInvalidRequestBody)
 	}
 
-	err := ls.ReturnBook(borrowBook.Title)
+	err := ls.ReturnBook(strings.ToLower(borrowBook.Title))
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
@@ -109,7 +110,7 @@ func (ls *LoanService) ReturnBookHandler(c *fiber.Ctx) error {
 }
 
 func (ls *LoanService) ReturnBook(title string) *apperrors.RestErr {
-	bookDetail, restErr := ls.bookPGDB.GetBook(title)
+	bookDetail, restErr := ls.bookPGDB.GetBook(strings.ToLower(title))
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return restErr

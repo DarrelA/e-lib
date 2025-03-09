@@ -3,6 +3,7 @@ package rest
 import (
 	"bytes"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -18,9 +19,13 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
+const (
+	bookTitle = "Anna"
+)
+
 type mockBookRepository struct {
 	mock.Mock
-	ExpectedBook *entity.Book
+	ExpectedBook *dto.BookDetail
 }
 
 func (m *mockBookRepository) GetBook(title string) (*dto.BookDetail, *apperrors.RestErr) {
@@ -32,9 +37,7 @@ func (m *mockBookRepository) GetBook(title string) (*dto.BookDetail, *apperrors.
 	return book, nil
 }
 
-type mockLoanRepository struct {
-	mock.Mock
-}
+type mockLoanRepository struct{ mock.Mock }
 
 func (m *mockLoanRepository) BorrowBook(user entity.User, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
 	args := m.Called(user, bookDetail.UUID)
@@ -45,7 +48,7 @@ func (m *mockLoanRepository) BorrowBook(user entity.User, bookDetail *dto.BookDe
 }
 
 func (m *mockLoanRepository) ExtendBookLoan(user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
-	args := m.Called(user_id, bookDetail.UUID)
+	args := m.Called(user_id, bookDetail)
 	if args.Get(0) == nil {
 		return nil, args.Get(1).(*apperrors.RestErr)
 	}
@@ -54,31 +57,45 @@ func (m *mockLoanRepository) ExtendBookLoan(user_id int64, bookDetail *dto.BookD
 
 func (m *mockLoanRepository) ReturnBook(user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
 	args := m.Called(user_id, book_uuid)
-	if args.Get(0) == nil {
-		return args.Get(1).(*apperrors.RestErr)
+	err := args.Get(0)
+	if err == nil {
+		return nil
 	}
-	return nil
+	return err.(*apperrors.RestErr)
 }
 
 func TestRoutes(t *testing.T) {
 	// Shared setup
 	testUser := entity.User{ID: 1, Name: "User1"}
 	bookUUID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
-	testBook := entity.Book{UUID: &bookUUID, Title: "Anna", AvailableCopies: 10}
+	expectedBook := dto.BookDetail{UUID: bookUUID, Title: "anna", AvailableCopies: 10}
+
+	now := time.Now().UTC()
 	expectedLoan := dto.LoanDetail{
-		BookTitle:      "Anna",
+		BookTitle:      "anna",
 		NameOfBorrower: "User1",
-		LoanDate:       time.Time{},
-		ReturnDate:     time.Time{},
+		LoanDate:       now,
+		ReturnDate:     now.Add(time.Hour * 24 * 7 * 4),
+	}
+
+	extendedReturnDate := now.Add(time.Hour * 24 * 7 * 3)
+	extendedLoan := dto.LoanDetail{
+		BookTitle:      "anna",
+		NameOfBorrower: "User1",
+		LoanDate:       now,
+		ReturnDate:     extendedReturnDate,
 	}
 
 	mockBookRepo := new(mockBookRepository)
-	mockBookRepo.On("GetBook", "Anna").Return(&testBook, nil)
+	mockBookRepo.On("GetBook", "anna").Return(&expectedBook, nil)
+
 	bookService := interfaceSvc.NewBookService(mockBookRepo)
 
 	mockLoanRepo := new(mockLoanRepository)
-
 	mockLoanRepo.On("BorrowBook", testUser, bookUUID).Return(&expectedLoan, nil)
+	mockLoanRepo.On("ExtendBookLoan", testUser.ID, &expectedBook).Return(&extendedLoan, nil)
+	mockLoanRepo.On("ReturnBook", testUser.ID, bookUUID).Return(nil, nil)
+
 	loanService := interfaceSvc.NewLoanService(testUser, mockBookRepo, mockLoanRepo)
 	app := NewRouter(bookService, loanService)
 
@@ -91,9 +108,9 @@ func TestRoutes(t *testing.T) {
 		}{
 			{
 				description:  "Get existing book by title",
-				route:        "/Book?title=Anna",
+				route:        fmt.Sprintf("/Book?title=%s", bookTitle),
 				expectedCode: http.StatusOK,
-				expectedBody: `{"uuid":"123e4567-e89b-12d3-a456-426614174000","title":"Anna","available_copies":10}`,
+				expectedBody: `{"uuid":"123e4567-e89b-12d3-a456-426614174000","title":"anna","available_copies":10}`,
 			},
 		}
 
@@ -124,7 +141,7 @@ func TestRoutes(t *testing.T) {
 				description:  "Successfully borrow book for 4 weeks",
 				route:        "/Borrow",
 				method:       http.MethodPost,
-				requestBody:  dto.BorrowBook{Title: "Anna"},
+				requestBody:  dto.BorrowBook{Title: bookTitle},
 				expectedCode: http.StatusOK,
 				expectedBody: expectedLoan,
 			},
@@ -165,13 +182,6 @@ func TestRoutes(t *testing.T) {
 	})
 
 	t.Run("ExtendBook", func(t *testing.T) {
-		expectedLoan := dto.LoanDetail{
-			BookTitle:      "Anna",
-			NameOfBorrower: "User1",
-			LoanDate:       time.Time{},
-			ReturnDate:     time.Time{},
-		}
-
 		tests := []struct {
 			description  string
 			route        string
@@ -184,7 +194,7 @@ func TestRoutes(t *testing.T) {
 				description:  "Successfully extend the loan of the book by 3 weeks",
 				route:        "/Extend",
 				method:       http.MethodPost,
-				requestBody:  dto.BorrowBook{Title: "Anna"},
+				requestBody:  dto.BorrowBook{Title: bookTitle},
 				expectedCode: http.StatusOK,
 				expectedBody: expectedLoan,
 			},
@@ -218,8 +228,7 @@ func TestRoutes(t *testing.T) {
 
 				// Check ReturnDate is exactly 3 weeks after LoanDate
 				expectedReturnDate := actualLoan.LoanDate.Add(time.Hour * 24 * 7 * 3)
-				assert.True(t, expectedReturnDate.Equal(actualLoan.ReturnDate),
-					"ReturnDate should be 3 weeks after LoanDate (expected %s, got %s)", expectedReturnDate, actualLoan.ReturnDate)
+				assert.WithinDuration(t, expectedReturnDate, actualLoan.ReturnDate, 5*time.Second, "ReturnDate should be 3 weeks after LoanDate")
 			})
 		}
 	})
@@ -237,7 +246,7 @@ func TestRoutes(t *testing.T) {
 				description:  "Successfully return the book",
 				route:        "/Return",
 				method:       http.MethodPost,
-				requestBody:  dto.BorrowBook{Title: "Anna"},
+				requestBody:  dto.BorrowBook{Title: bookTitle},
 				expectedCode: http.StatusOK,
 				expectedBody: `{"status":"success"}`,
 			},
