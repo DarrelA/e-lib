@@ -33,6 +33,5 @@ test:
 
 # Integration Test
 it:
-	@go build -cover -a -o e-lib-it github.com/DarrelA/e-lib/cmd/loan
+	@go build -cover -o e-lib-it github.com/DarrelA/e-lib/cmd/loan
 	./deployment/scripts/wrap_test_for_coverage.sh
-	@go tool cover -html=./testdata/reports/covdatafiles/coverage.out -o "./testdata/reports/it_coverage.html"

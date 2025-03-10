@@ -8,6 +8,7 @@
     - [PostgreSQL](#postgresql)
   - [Usage](#usage)
 - [Integration Test](#integration-test)
+  - [JQ](#jq)
 - [Roadmap](#roadmap)
 - [Acknowledgement](#acknowledgement)
   - [Packages](#packages)
@@ -82,6 +83,10 @@ Refer to `Makefile` for all the commands.
 
 # Integration Test
 
+## JQ
+
+- [./jq](https://jqlang.org/download/)
+
 ```sh
 chmod +x ./deployment/scripts/integration_test.sh
 chmod +x ./deployment/scripts/wrap_test_for_coverage.sh
@@ -106,9 +111,10 @@ chmod +x ./deployment/scripts/wrap_test_for_coverage.sh
 
 ## Packages
 
-|                    Package                     |                Description                |
-| :--------------------------------------------: | :---------------------------------------: |
-|       [Fiber](https://docs.gofiber.io/)        | Fast and lightweight web framework for Go |
-|    [zerolog](https://github.com/rs/zerolog)    |    Zero-allocation JSON logger for Go     |
-| [testify](https://github.com/stretchr/testify) |            Go testing toolkit             |
-|   [dbdiagram.io](https://dbdiagram.io/home)    |  A free, simple tool to draw ER diagrams  |
+|                         Package                         |                            Description                            |
+| :-----------------------------------------------------: | :---------------------------------------------------------------: |
+|            [Fiber](https://docs.gofiber.io/)            |             Fast and lightweight web framework for Go             |
+|        [zerolog](https://github.com/rs/zerolog)         |                Zero-allocation JSON logger for Go                 |
+|     [testify](https://github.com/stretchr/testify)      |                        Go testing toolkit                         |
+| [validator](https://github.com/go-playground/validator) | Value validations for structs and individual fields based on tags |
+|        [dbdiagram.io](https://dbdiagram.io/home)        |              A free, simple tool to draw ER diagrams              |

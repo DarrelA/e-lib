@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	logFilePath         = "app.log"
+	logFilePath         = "./config/app.log"
 	pathToBooksJsonFile = "./testdata/json/books.json"
 )
 

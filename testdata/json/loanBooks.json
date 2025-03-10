@@ -1,0 +1,7 @@
+[{"test_name":"sequence_a_0","method":"GET","url_path":"/Book","url_query_string":"title=tAken","expected_status_code":200,"json_body_request":{}},
+{"test_name":"sequence_a_1","method":"POST","url_path":"/Borrow","url_query_string":"","expected_status_code":200,"json_body_request":{"title":"taken"}},
+{"test_name":"sequence_a_2","method":"POST","url_path":"/Extend","url_query_string":"","expected_status_code":200,"json_body_request":{"title":"taken"}},
+{"test_name":"sequence_a_","method":"POST","url_path":"/Return","url_query_string":"","expected_status_code":200,"json_body_request":{"title":"taken"}},
+{"test_name":"sequence_a_1","method":"POST","url_path":"/Borrow","url_query_string":"","expected_status_code":200,"json_body_request":{"title":"taken"}},
+{"test_name":"sequence_a_2","method":"POST","url_path":"/Extend","url_query_string":"","expected_status_code":200,"json_body_request":{"title":"taken"}},
+{"test_name":"sequence_a_","method":"POST","url_path":"/Return","url_query_string":"","expected_status_code":200,"json_body_request":{"title":"taken"}}]
