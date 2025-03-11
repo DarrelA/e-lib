@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/DarrelA/e-lib/config"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/DarrelA/e-lib/internal/domain/repository/postgres"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -14,7 +15,7 @@ import (
 )
 
 const (
-	pathToSqlFile = "./config/schema.elib.sql"
+	pathToSQLTestSchema = "./config/test.schema.api_testing.sql"
 
 	errMsgUnableReadSchema         = "unable to read %s"
 	errMsgUnableToExecuteSQLScript = "unable to execute sql script"
@@ -38,33 +39,55 @@ const (
 	`
 )
 
-type SeedRepository struct{ dbpool *pgxpool.Pool }
+type SeedRepository struct {
+	config *config.EnvConfig
+	dbpool *pgxpool.Pool
+}
 
-func NewRepository(dbpool *pgxpool.Pool, user *entity.User) postgres.SeedRepository {
+func NewRepository(config *config.EnvConfig, dbpool *pgxpool.Pool, user *entity.User) postgres.SeedRepository {
 	ctx := context.Background()
-	sqlData, err := os.ReadFile(pathToSqlFile)
-	if err != nil {
-		log.Error().Err(err).Msgf(errMsgUnableReadSchema, pathToSqlFile)
-	}
-	_, err = dbpool.Exec(ctx, string(sqlData))
-
-	if err != nil {
-		log.Error().Err(err).Msg(errMsgUnableToExecuteSQLScript)
+	var schemasToExecute []string
+	schemasToExecute = append(schemasToExecute, config.PathToSQLSchema)
+	if config.AppEnv == "test" {
+		schemasToExecute = append(schemasToExecute, pathToSQLTestSchema)
 	}
 
-	_, err = dbpool.Exec(ctx, insertDummyUser, user.Name, user.Email)
+	for _, schemaPath := range schemasToExecute {
+		if err := executeSchema(ctx, dbpool, schemaPath); err != nil {
+			dbpool.Close()
+			return nil
+		}
+	}
+
+	log.Info().Msgf("successfully created the tables using %s", config.PathToSQLSchema)
+
+	_, err := dbpool.Exec(ctx, insertDummyUser, user.Name, user.Email)
 	if err != nil {
 		log.Error().Err(err).Msg("Error inserting dummy user")
 		dbpool.Close()
 		return nil
 	}
 
-	log.Info().Msg("successfully created the tables")
-	return &SeedRepository{dbpool}
+	log.Info().Msgf("successfully inserted dummy user %s", user.Name)
+	return &SeedRepository{config, dbpool}
 }
 
-func (sr SeedRepository) SeedBooks(pathToBooksJsonFile string) error {
-	content, err := os.ReadFile(pathToBooksJsonFile)
+func executeSchema(ctx context.Context, dbpool *pgxpool.Pool, schemaPath string) error {
+	sqlData, err := os.ReadFile(schemaPath)
+	if err != nil {
+		log.Error().Err(err).Msgf(errMsgUnableReadSchema, schemaPath)
+		return err
+	}
+	_, err = dbpool.Exec(ctx, string(sqlData))
+	if err != nil {
+		log.Error().Err(err).Msg(errMsgUnableToExecuteSQLScript)
+		return err
+	}
+	return nil
+}
+
+func (sr SeedRepository) SeedBooks() error {
+	content, err := os.ReadFile(sr.config.PathToBooksJsonFile)
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		return err
@@ -98,6 +121,6 @@ func (sr SeedRepository) SeedBooks(pathToBooksJsonFile string) error {
 		}
 	}
 
-	log.Info().Msg("Books seeded successfully.")
+	log.Info().Msgf("Books seeded successfully using %s.", sr.config.PathToBooksJsonFile)
 	return nil
 }

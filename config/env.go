@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strings"
 
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/rs/zerolog/log"
@@ -25,7 +26,10 @@ func NewEnvConfig() LoadEnvConfig {
 }
 
 func (e *EnvConfig) LoadServerConfig() {
+	e.AppEnv = strings.ToLower(checkEmptyEnvVar("APP_ENV"))
 	e.Port = checkEmptyEnvVar("APP_PORT")
+	e.PathToSQLSchema = "./config/schema.elib.sql"
+	e.PathToBooksJsonFile = "./testdata/json/" + e.AppEnv + ".books.json"
 }
 
 func (e *EnvConfig) LoadPostgresConfig() {

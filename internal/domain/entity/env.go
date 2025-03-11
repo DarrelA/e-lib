@@ -2,9 +2,11 @@ package entity
 
 type (
 	EnvConfig struct {
-		Port             string
-		LogFilePath      string
-		PostgresDBConfig *PostgresDBConfig
+		AppEnv              string
+		Port                string
+		PathToSQLSchema     string
+		PathToBooksJsonFile string
+		PostgresDBConfig    *PostgresDBConfig
 	}
 
 	PostgresDBConfig struct {
