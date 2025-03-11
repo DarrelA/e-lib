@@ -3,6 +3,7 @@
 #####################
 
 APP_ENV ?= dev
+VARS = POSTGRES_DB=$(POSTGRES_DB) POSTGRES_USER=$(POSTGRES_USER) 
 
 #####################
 #    Env Configs    #
@@ -32,6 +33,12 @@ test:
 	@go test ./internal/interface/transport/rest
 
 # Integration Test
+# Depends on: deployment/docker-compose.integration.yml
+.PHONY: it
+
 it:
-	@go build -cover -o e-lib-it github.com/DarrelA/e-lib/cmd/loan
-	./deployment/scripts/wrap_test_for_coverage.sh
+	@echo "Running integration tests with docker-compose.integration.yml..."
+	@cd deployment && \
+		APP_ENV=test $(VARS) docker compose -f docker-compose.integration.yml build --no-cache app-integration-test && \
+		APP_ENV=test $(VARS) docker compose -f docker-compose.integration.yml run --rm app-integration-test
+	@go tool cover -html=./testdata/reports/covdatafiles/coverage.out -o "./testdata/reports/it_ coverage.html"
