@@ -39,6 +39,8 @@ test:
 it:
 	@echo "Running integration tests with docker-compose.integration.yml..."
 	@cd deployment && \
-		APP_ENV=test $(VARS) docker compose -f docker-compose.integration.yml build --no-cache app-integration-test && \
+		APP_ENV=test $(VARS) docker compose -f docker-compose.integration.yml build app-integration-test && \
 		APP_ENV=test $(VARS) docker compose -f docker-compose.integration.yml run --rm app-integration-test
-	@go tool cover -html=./testdata/reports/covdatafiles/coverage.out -o "./testdata/reports/it_ coverage.html"
+	@go tool cover -html=./testdata/reports/covdatafiles/coverage.out -o "./testdata/reports/it_coverage.html"
+	@echo "Removing containers and volumes..."
+	@cd deployment && APP_ENV=test $(VARS) docker compose -f docker-compose.integration.yml down -v

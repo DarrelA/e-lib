@@ -1,0 +1,6 @@
+[{ "title": "book0", "available_copies": 0 },
+{ "title": "Book1", "available_copies": 1 },
+{ "title": "book2", "available_copies": 2 },
+{ "title": "book 3", "available_copies": 3 },
+{ "title": "book4", "available_copies": 4 },
+{ "title": "Hello World!@#$%^&*()_+=-`~[]{}|;':\",./<>?", "available_copies": 1 }]

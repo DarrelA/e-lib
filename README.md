@@ -8,6 +8,7 @@
     - [PostgreSQL](#postgresql)
   - [Usage](#usage)
 - [Integration Test](#integration-test)
+  - [Test Cases](#test-cases)
   - [JQ](#jq)
 - [Roadmap](#roadmap)
 - [Acknowledgement](#acknowledgement)
@@ -82,6 +83,10 @@ Refer to `Makefile` for all the commands.
 ```
 
 # Integration Test
+
+## Test Cases
+
+- [e-lib-test-cases spreadsheet](https://docs.google.com/spreadsheets/d/1qSSr5BKv9U1xnTNzGl7a-ubbvUVa_WLRL3-GkoI4g54/edit?usp=sharing)
 
 ## JQ
 
