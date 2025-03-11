@@ -41,7 +41,8 @@ func main() {
 	appInstance := initializeServer(&wg, user, config, bookRepository, loanRepository)
 
 	wg.Wait()
-	waitForShutdown(&wg, appInstance, postgresConn)
+	waitForShutdown(appInstance, postgresConn)
+	log.Info().Msg("Exiting...")
 	logFile.Close()
 	os.Exit(0)
 }
@@ -76,19 +77,19 @@ func initializeServer(
 	config *config.EnvConfig, bookRepository pgdb.BookRepository, loanRepository pgdb.LoanRepository) *fiber.App {
 
 	wg.Add(1)
+	defer wg.Done()
 
 	bookService := interfaceSvc.NewBookService(bookRepository)
 	loanService := interfaceSvc.NewLoanService(*user, bookRepository, loanRepository)
 	appInstance := rest.NewRouter(bookService, loanService)
 
 	go func() {
-		defer wg.Done()
 		rest.StartServer(appInstance, config.Port)
 	}()
 	return appInstance
 }
 
-func waitForShutdown(wg *sync.WaitGroup, appInstance *fiber.App, postgresConn repository.RDBMS) {
+func waitForShutdown(appInstance *fiber.App, postgresConn repository.RDBMS) {
 	sigChan := make(chan os.Signal, 1) // Create a channel to listen for OS signals
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	<-sigChan // Block until a signal is received
@@ -103,7 +104,6 @@ func waitForShutdown(wg *sync.WaitGroup, appInstance *fiber.App, postgresConn re
 	log.Info().Msg("app instance has shutdown")
 
 	postgresConn.DisconnectFromPostgres()
-	wg.Done()
 }
 
 func getDummyUserData() *entity.User {

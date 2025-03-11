@@ -13,5 +13,6 @@ GOCOVERDIR="$COVDATAFILES_DIR" ./integration_test.sh
 
 # Process coverage data
 go tool covdata percent -i="$COVDATAFILES_DIR" -o "$COVDATAFILES_DIR/coverage.out"
+# go tool covdata debugdump -i="$COVDATAFILES_DIR"
 
 echo "Coverage report generated at $OUTPUT_HTML"

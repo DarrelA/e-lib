@@ -52,7 +52,12 @@ func NewRepository(dbpool *pgxpool.Pool, user *entity.User) postgres.SeedReposit
 		log.Error().Err(err).Msg(errMsgUnableToExecuteSQLScript)
 	}
 
-	dbpool.QueryRow(ctx, insertDummyUser, user.Name, user.Email)
+	_, err = dbpool.Exec(ctx, insertDummyUser, user.Name, user.Email)
+	if err != nil {
+		log.Error().Err(err).Msg("Error inserting dummy user")
+		dbpool.Close()
+		return nil
+	}
 
 	log.Info().Msg("successfully created the tables")
 	return &SeedRepository{dbpool}
