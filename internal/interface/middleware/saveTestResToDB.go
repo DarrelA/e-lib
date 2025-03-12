@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
@@ -13,6 +12,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
+
+var expectedId = 1
 
 func SaveTestResToDB(c *fiber.Ctx) error {
 	dbpool, ok := c.Locals("dbpool").(*pgxpool.Pool)
@@ -58,9 +59,6 @@ func SaveTestResToDB(c *fiber.Ctx) error {
 		}
 	}()
 
-	// Get the next expectedId by counting the rows in the Expected table
-	expectedId, err := getNextExpectedId(ctx, tx)
-
 	actual := entity.Actual{
 		ExpectedId:        expectedId,
 		StatusCode:        statusCode,
@@ -85,16 +83,8 @@ func insertActual(ctx context.Context, tx pgx.Tx, actual entity.Actual) error {
 		VALUES ($1, $2, $3, $4, $5, $6)
 	`
 	_, err := tx.Exec(ctx, query, actual.ExpectedId, actual.StatusCode, actual.ReqUrlQueryString, actual.ReqBody, actual.ResBody, actual.CreatedAt)
-	return err
-}
 
-func getNextExpectedId(ctx context.Context, tx pgx.Tx) (int, error) {
-	query := `SELECT COUNT(*) FROM Expected`
-	var count int
-	log.Info().Msgf("expectedId: %d", count)
-	err := tx.QueryRow(ctx, query).Scan(&count)
-	if err != nil {
-		return 0, fmt.Errorf("failed to get next expected_id: %w", err)
-	}
-	return count + 1, nil // Increment to get the next ID
+	log.Info().Msgf("expectedId: %d", expectedId)
+	expectedId++
+	return err
 }

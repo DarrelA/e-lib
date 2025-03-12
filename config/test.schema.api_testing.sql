@@ -12,7 +12,7 @@ CREATE TABLE Expected(
 
 CREATE TABLE Actual(
   id serial PRIMARY KEY,
-  expected_id int NOT NULL,
+  expected_id int,
   status_code int NOT NULL,
   req_url_query_string text,
   req_body text,
