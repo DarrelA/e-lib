@@ -22,7 +22,6 @@ COPY --from=builder /app/e-lib-it /root/
 
 COPY /testdata/json/test.books.json /root/testdata/json/
 COPY /testdata/json/test.booksActualReq.json /root/testdata/json/
-COPY /testdata/json/test.booksExpectedRes.json /root/testdata/json/
 
 COPY deployment/scripts/integration_test.sh /root/
 COPY deployment/scripts/wrap_test_for_coverage.sh /root/
