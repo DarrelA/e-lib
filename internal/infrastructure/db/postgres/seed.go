@@ -10,12 +10,14 @@ import (
 	"github.com/DarrelA/e-lib/config"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/DarrelA/e-lib/internal/domain/repository/postgres"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
 
 const (
-	pathToSQLTestSchema = "./config/test.schema.api_testing.sql"
+	pathToSQLTestSchema    = "./config/test.schema.api_testing.sql"
+	pathToBooksExpectedRes = "/root/testdata/json/test.booksExpectedRes.json"
 
 	errMsgUnableReadSchema         = "unable to read %s"
 	errMsgUnableToExecuteSQLScript = "unable to execute sql script"
@@ -36,6 +38,11 @@ const (
 		INSERT INTO Books (uuid, title, available_copies, created_at, updated_at)
 		VALUES (gen_random_uuid(), lower($1), $2, NOW(), NOW())
 		ON CONFLICT (title) DO NOTHING;  -- Skip duplicates based on title
+	`
+
+	insertBooksExpectedResStmt = `
+		INSERT INTO Expected (method, url_path, status_code, res_body_contains)
+		VALUES ($1, $2, $3, $4)
 	`
 )
 
@@ -89,13 +96,72 @@ func executeSchema(ctx context.Context, dbpool *pgxpool.Pool, schemaPath string)
 func (sr SeedRepository) SeedBooks() error {
 	content, err := os.ReadFile(sr.config.PathToBooksJsonFile)
 	if err != nil {
-		log.Error().Err(err).Msg("")
+		log.Error().Err(err).Msg("Failed to read books JSON file")
 		return err
 	}
 
 	var books []*entity.Book
-	json.Unmarshal(content, &books)
+	err = json.Unmarshal(content, &books)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to unmarshal books JSON")
+		return err
+	}
 
+	err = sr.executeTransaction(func(tx pgx.Tx) error {
+		ctx := context.Background()
+
+		for _, book := range books {
+			_, err := tx.Exec(ctx, insertBooksStmt, strings.ToLower(book.Title), book.AvailableCopies)
+			if err != nil {
+				log.Error().Err(err).Msg(errMsgInsertBooks)
+				return fmt.Errorf(errMsgInsertBooks, book.Title, err)
+			}
+		}
+
+		log.Info().Msgf("Books seeded successfully using %s.", sr.config.PathToBooksJsonFile)
+
+		if sr.config.AppEnv == "test" {
+			content, err := os.ReadFile(pathToBooksExpectedRes)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to read expected results JSON file")
+				return err
+			}
+
+			var expected []*entity.Expected
+			err = json.Unmarshal(content, &expected)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to unmarshal expected results JSON")
+				return err
+			}
+
+			if len(expected) == 0 {
+				log.Warn().Msg("No expected results found in JSON, skipping expected results seeding.")
+				return nil // or return error, depending on your needs
+			}
+
+			for _, exp := range expected {
+				_, err = tx.Exec(ctx, insertBooksExpectedResStmt, exp.Method, exp.UrlPath, exp.StatusCode, exp.ResBodyContains)
+				if err != nil {
+					log.Error().Err(err).Msg(errMsgUnableToExecuteSQLScript)
+					return err
+				}
+			}
+
+			log.Info().Msgf("ExpectedResults seeded successfully using %s.", pathToBooksExpectedRes)
+		}
+
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+type TxFunc func(pgx.Tx) error
+
+func (sr SeedRepository) executeTransaction(txFunc TxFunc) error {
 	ctx := context.Background()
 	tx, err := sr.dbpool.Begin(ctx)
 	if err != nil {
@@ -105,22 +171,22 @@ func (sr SeedRepository) SeedBooks() error {
 
 	defer func() {
 		if p := recover(); p != nil {
-			tx.Rollback(ctx)
+			log.Error().Interface("panic", p).Msg("Panic occurred during transaction") // Log the panic
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				log.Error().Err(rbErr).Msg("Failed to rollback transaction after panic")
+			}
 		} else if err != nil {
-			tx.Rollback(ctx)
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				log.Error().Err(rbErr).Msg("Failed to rollback transaction")
+			}
 		} else {
 			err = tx.Commit(ctx)
+			if err != nil {
+				log.Error().Err(err).Msg("Failed to commit transaction")
+			}
 		}
 	}()
 
-	for _, book := range books {
-		_, err = tx.Exec(ctx, insertBooksStmt, strings.ToLower(book.Title), book.AvailableCopies)
-		if err != nil {
-			log.Error().Err(err).Msg(errMsgInsertBooks)
-			return fmt.Errorf(errMsgInsertBooks, book.Title, err)
-		}
-	}
-
-	log.Info().Msgf("Books seeded successfully using %s.", sr.config.PathToBooksJsonFile)
-	return nil
+	err = txFunc(tx)
+	return err
 }
