@@ -16,8 +16,9 @@ import (
 )
 
 const (
-	pathToSQLTestSchema    = "./config/test.schema.api_testing.sql"
-	pathToBooksExpectedRes = "/root/testdata/json/test.booksExpectedRes.json"
+	pathToSQLTestSchema              = "./config/test.schema.api_testing.sql"
+	pathToBooksExpectedRes           = "/root/testdata/json/test.booksExpectedRes.json"
+	pathToCompareTestReqAndResReport = "/root/testdata/reports/it_report.json"
 
 	errMsgUnableReadSchema         = "unable to read %s"
 	errMsgUnableToExecuteSQLScript = "unable to execute sql script"
@@ -189,4 +190,111 @@ func (sr SeedRepository) executeTransaction(txFunc TxFunc) error {
 
 	err = txFunc(tx)
 	return err
+}
+
+func (sr SeedRepository) CompareTestReqAndRes() {
+	ctx := context.Background()
+
+	query := "SELECT e.id, e.method, e.url_path, a.req_url_query_string, a.req_body, e.status_code, a.status_code, a.res_body, e.res_body_contains, a.created_at FROM expected e JOIN actual a ON e.id = a.expected_id"
+	rows, err := sr.dbpool.Query(ctx, query)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to query expected and actual data")
+		return
+	}
+	defer rows.Close()
+
+	var results []entity.CompareResult
+
+	for rows.Next() {
+		var result entity.CompareResult
+		var expected entity.Expected
+		var actual entity.Actual
+
+		err := rows.Scan(
+			&expected.Id,
+			&expected.Method,
+			&expected.UrlPath,
+			&actual.ReqUrlQueryString,
+			&actual.ReqBody,
+			&expected.StatusCode,
+			&actual.StatusCode,
+			&actual.ResBody,
+			&expected.ResBodyContains,
+			&actual.CreatedAt,
+		)
+		if err != nil {
+			log.Error().Err(err).Msg("Failed to scan row")
+			continue
+		}
+
+		result.Id = expected.Id
+		result.Method = expected.Method
+		result.UrlPath = expected.UrlPath
+		result.ReqUrlQueryString = actual.ReqUrlQueryString
+		result.ReqBody = actual.ReqBody
+		result.ExpectedStatusCode = expected.StatusCode
+		result.ActualStatusCode = actual.StatusCode
+		result.ResBody = actual.ResBody
+		result.ResBodyContains = expected.ResBodyContains
+		result.CreatedAt = actual.CreatedAt
+		result.Reason = []string{}
+
+		statusCodePass, statusCodeReason := assertEqual(fmt.Sprintf("%d", expected.StatusCode),
+			fmt.Sprintf("%d", actual.StatusCode), "Status code mismatch")
+		resBodyContainsPass, resBodyContainsReason := true, ""
+
+		if expected.ResBodyContains != "" {
+			resBodyContainsPass, resBodyContainsReason = assertContains(actual.ResBody, expected.ResBodyContains,
+				"Response body does not contain expected string")
+		}
+
+		if !statusCodePass {
+			result.Reason = append(result.Reason, statusCodeReason)
+		}
+		if !resBodyContainsPass && resBodyContainsReason != "" {
+			result.Reason = append(result.Reason, resBodyContainsReason)
+		}
+
+		results = append(results, result)
+	}
+
+	if err := rows.Err(); err != nil {
+		log.Error().Err(err).Msg("Error iterating over rows")
+		return
+	}
+
+	file, err := os.Create(pathToCompareTestReqAndResReport)
+	if err != nil {
+		log.Error().Err(err).Msgf("Failed to create file: %s", pathToCompareTestReqAndResReport)
+		return
+	}
+	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ") // Add indentation for readability
+
+	if err := encoder.Encode(results); err != nil {
+		log.Error().Err(err).Msg("Failed to encode results to JSON")
+		return
+	}
+
+	log.Info().Msgf("Comparison results written to %s", pathToCompareTestReqAndResReport)
+}
+
+func assertEqual(expected string, actual string, msg string) (bool, string) {
+	if expected == actual {
+		return true, ""
+	}
+
+	reason := fmt.Sprintf("assertion failed: Expected [%s], Actual [%s]. %s", expected, actual, msg)
+	return false, reason
+}
+
+func assertContains(actual string, expected string, msg string) (bool, string) {
+	if strings.Contains(actual, expected) {
+		return true, ""
+	}
+
+	reason := fmt.Sprintf("assertion failed:  Expected string [%s] to contain substring [%s]. %s", actual, expected, msg)
+	return false, reason
 }

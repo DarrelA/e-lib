@@ -32,7 +32,7 @@ func main() {
 	logFile := logger.CreateAppLog(logFilePath)
 	logger.NewZeroLogger(logFile)
 	config := initializeEnv()
-	user, postgresConn, postgresDBInstance, bookRepository, loanRepository := initializeDatabases(config)
+	user, postgresConn, postgresDBInstance, seedRepository, bookRepository, loanRepository := initializeDatabases(config)
 
 	// Use `WaitGroup` when you just need to wait for tasks to complete without exchanging data.
 	// Use channels when you need to signal task completion and possibly exchange data.
@@ -40,6 +40,11 @@ func main() {
 	appInstance := initializeServer(&wg, user, config, postgresDBInstance, bookRepository, loanRepository)
 
 	wg.Wait()
+
+	if config.AppEnv == "test" {
+		seedRepository.CompareTestReqAndRes()
+	}
+
 	waitForShutdown(appInstance, postgresConn)
 	log.Info().Msg("Exiting...")
 	logFile.Close()
@@ -60,7 +65,8 @@ func initializeEnv() *config.EnvConfig {
 
 func initializeDatabases(config *config.EnvConfig) (
 	*entity.User, repository.RDBMS,
-	*postgres.PostgresDB, pgdb.BookRepository, pgdb.LoanRepository,
+	*postgres.PostgresDB, pgdb.SeedRepository,
+	pgdb.BookRepository, pgdb.LoanRepository,
 ) {
 	user := getDummyUserData()
 
@@ -73,7 +79,7 @@ func initializeDatabases(config *config.EnvConfig) (
 
 	bookRepository := postgres.NewBookRepository(postgresDBInstance.Dbpool)
 	loanRepository := postgres.NewLoanRepository(postgresDBInstance.Dbpool)
-	return user, postgresConnection, postgresDBInstance, bookRepository, loanRepository
+	return user, postgresConnection, postgresDBInstance, seedRepository, bookRepository, loanRepository
 }
 
 func initializeServer(

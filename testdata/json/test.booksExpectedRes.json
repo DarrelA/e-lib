@@ -1,7 +1,7 @@
 [
-  {"id": 1, "method": "GET", "url_path": "/Book", "status_code": 200, "res_body_contains": ""},
-  {"id": 2, "method": "GET", "url_path": "/Book", "status_code": 200, "res_body_contains": ""},
-  {"id": 3, "method": "GET", "url_path": "/Book", "status_code": 200, "res_body_contains": ""},
+  {"id": 1, "method": "GET", "url_path": "/Book", "status_code": 200, "res_body_contains": "\"title\":\"book1\",\"available_copies\":1"},
+  {"id": 2, "method": "GET", "url_path": "/Book", "status_code": 404, "res_body_contains": "\"message\":\"Book not found.\",\"status\":404"},
+  {"id": 3, "method": "GET", "url_path": "/Book", "status_code": 200, "res_body_contains": "\"title\":\"book1\",\"available_copies\":1"},
   {"id": 4, "method": "GET", "url_path": "/Book", "status_code": 200, "res_body_contains": ""},
   {"id": 5, "method": "GET", "url_path": "/Book", "status_code": 200, "res_body_contains": ""},
   {"id": 6, "method": "GET", "url_path": "/Book", "status_code": 200, "res_body_contains": ""},
