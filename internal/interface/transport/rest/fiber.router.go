@@ -1,10 +1,13 @@
 package rest
 
 import (
+	"github.com/DarrelA/e-lib/config"
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	appSvc "github.com/DarrelA/e-lib/internal/application/services"
+	"github.com/DarrelA/e-lib/internal/infrastructure/db/postgres"
 	mw "github.com/DarrelA/e-lib/internal/interface/middleware"
 	"github.com/gofiber/fiber/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
 
@@ -21,6 +24,8 @@ func StartServer(app *fiber.App, port string) {
 }
 
 func NewRouter(
+	config *config.EnvConfig,
+	postgresDBInstance *postgres.PostgresDB,
 	bookService appSvc.BookService,
 	loanService appSvc.LoanService,
 ) *fiber.App {
@@ -28,7 +33,7 @@ func NewRouter(
 	appInstance := fiber.New()
 
 	log.Info().Msg("connecting middlewares")
-	appInstance.Use(mw.Logger)
+	useMiddlewares(appInstance, config.AppEnv, postgresDBInstance.Dbpool)
 
 	log.Info().Msg("setting up routes")
 	appInstance.Get("/health", func(c *fiber.Ctx) error {
@@ -38,14 +43,14 @@ func NewRouter(
 	/********************
 	 *   BookServices   *
 	 ********************/
-	appInstance.Get("/Book", mw.InputValidatorForGET, bookService.GetBookByTitleHandler)
+	appInstance.Get("/Book", bookService.GetBookByTitleHandler)
 
 	/********************
 	*   LoanServices   *
 	********************/
-	appInstance.Post("/Borrow", mw.InputValidatorForPOST, loanService.BorrowBookHandler)
-	appInstance.Post("/Extend", mw.InputValidatorForPOST, loanService.ExtendBookLoanHandler)
-	appInstance.Post("/Return", mw.InputValidatorForPOST, loanService.ReturnBookHandler)
+	appInstance.Post("/Borrow", loanService.BorrowBookHandler)
+	appInstance.Post("/Extend", loanService.ExtendBookLoanHandler)
+	appInstance.Post("/Return", loanService.ReturnBookHandler)
 
 	appInstance.All("*", func(c *fiber.Ctx) error {
 		path := c.Path()
@@ -60,4 +65,18 @@ func NewRouter(
 	log.Info().Msg("/health endpoint is available")
 	log.Debug().Msgf("appInstance memory address: %p", appInstance)
 	return appInstance
+}
+
+func useMiddlewares(appInstance *fiber.App, appEnv string, dbpool *pgxpool.Pool) {
+	appInstance.Use(func(c *fiber.Ctx) error {
+		c.Locals("appEnv", appEnv)
+		c.Locals("dbpool", dbpool)
+		return c.Next()
+	})
+
+	appInstance.Use(mw.Logger)
+	appInstance.Use(mw.InputValidator)
+	if appEnv == "test" {
+		appInstance.Use(mw.SaveTestResToDB)
+	}
 }

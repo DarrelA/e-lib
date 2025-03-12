@@ -11,9 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/DarrelA/e-lib/config"
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
+	"github.com/DarrelA/e-lib/internal/infrastructure/db/postgres"
 	interfaceSvc "github.com/DarrelA/e-lib/internal/interface/services"
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
@@ -67,6 +69,14 @@ func (m *mockLoanRepository) ReturnBook(user_id int64, book_uuid uuid.UUID) *app
 	return err.(*apperrors.RestErr)
 }
 
+func initializeEnv() *config.EnvConfig {
+	envConfig := config.NewEnvConfig()
+	envConfig.LoadServerConfig()
+	envConfig.LoadPostgresConfig()
+	config, _ := envConfig.(*config.EnvConfig)
+	return config
+}
+
 func TestRoutes(t *testing.T) {
 	// Shared setup
 	testUser := entity.User{ID: 1, Name: user}
@@ -89,6 +99,18 @@ func TestRoutes(t *testing.T) {
 		ReturnDate:     extendedReturnDate,
 	}
 
+	config := initializeEnv()
+	config.PostgresDBConfig = &entity.PostgresDBConfig{
+		Username:     "testuser",
+		Password:     "testpassword",
+		Host:         "localhost",
+		Port:         "5432",
+		Name:         "testdb",
+		SslMode:      "disable",
+		PoolMaxConns: "10",
+	}
+	postgresDBInstance := &postgres.PostgresDB{}
+
 	mockBookRepo := new(mockBookRepository)
 	bookService := interfaceSvc.NewBookService(mockBookRepo)
 
@@ -99,7 +121,7 @@ func TestRoutes(t *testing.T) {
 	mockLoanRepo.On("ReturnBook", testUser.ID, bookUUID).Return(nil, nil)
 
 	loanService := interfaceSvc.NewLoanService(testUser, mockBookRepo, mockLoanRepo)
-	app := NewRouter(bookService, loanService)
+	app := NewRouter(config, postgresDBInstance, bookService, loanService)
 
 	t.Run("GetBookByTitle", func(t *testing.T) {
 		tests := []struct {

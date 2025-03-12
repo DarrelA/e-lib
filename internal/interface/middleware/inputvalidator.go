@@ -31,26 +31,27 @@ func handleValidationError(c *fiber.Ctx, err error) error {
 	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("Validation failed: %v", errorMessages)})
 }
 
-func InputValidatorForGET(c *fiber.Ctx) error {
-	bookTitle := new(dto.BookRequest)
-	if err := c.QueryParser(bookTitle); err != nil {
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid query parameters"})
-	}
-
-	if err := validateBookTitle(*bookTitle); err != nil {
-		return handleValidationError(c, err)
-	}
-
-	bookTitle.Title = strings.ToLower(bookTitle.Title)
-	c.Locals("bookTitleKey", *bookTitle) // Use dereferenced value
-	return c.Next()
-}
-
-func InputValidatorForPOST(c *fiber.Ctx) error {
+func InputValidator(c *fiber.Ctx) error {
 	var bookTitle dto.BookRequest
-	if err := c.BodyParser(&bookTitle); err != nil {
-		log.Error().Err(err).Msg("")
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": err})
+	var err error
+
+	switch c.Method() {
+	case "GET":
+		bookTitlePtr := new(dto.BookRequest) // Use pointer for QueryParser to correctly bind
+		err = c.QueryParser(bookTitlePtr)    // Parse into pointer
+		if err == nil {
+			bookTitle = *bookTitlePtr // Dereference the pointer
+		}
+
+	case "POST":
+		err = c.BodyParser(&bookTitle)
+	default:
+		return c.Status(fiber.StatusMethodNotAllowed).JSON(fiber.Map{"error": "Method not allowed"})
+	}
+
+	if err != nil {
+		log.Error().Err(err).Msg("Error parsing request body/query") // Log error for both cases
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request parameters"})
 	}
 
 	if err := validateBookTitle(bookTitle); err != nil {

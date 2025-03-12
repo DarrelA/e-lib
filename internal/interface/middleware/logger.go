@@ -4,15 +4,19 @@ import (
 	"strings"
 	"time"
 
+	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	currentEnv = "dev"
-)
-
 func Logger(c *fiber.Ctx) error {
+	appEnv, ok := c.Locals("appEnv").(string)
+	if !ok {
+		err := apperrors.NewInternalServerError("appEnv not found or has incorrect type.")
+		log.Error().Err(err).Msg("")
+		return c.Status(err.Status).JSON(err)
+	}
+
 	start := time.Now()
 	err := c.Next()
 	duration := time.Since(start)
@@ -35,7 +39,7 @@ func Logger(c *fiber.Ctx) error {
 		Dur("response_time", duration).
 		Int64("latency_ms", duration.Milliseconds()).
 		Str("user_agent", c.Get("User-Agent")).
-		Msgf("request is completed in [%s] env", currentEnv)
+		Msgf("request is completed in [%s] env", appEnv)
 
 	return err
 }

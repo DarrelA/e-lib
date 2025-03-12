@@ -32,12 +32,12 @@ func main() {
 	logFile := logger.CreateAppLog(logFilePath)
 	logger.NewZeroLogger(logFile)
 	config := initializeEnv()
-	user, postgresConn, bookRepository, loanRepository := initializeDatabases(config)
+	user, postgresConn, postgresDBInstance, bookRepository, loanRepository := initializeDatabases(config)
 
 	// Use `WaitGroup` when you just need to wait for tasks to complete without exchanging data.
 	// Use channels when you need to signal task completion and possibly exchange data.
 	var wg sync.WaitGroup
-	appInstance := initializeServer(&wg, user, config, bookRepository, loanRepository)
+	appInstance := initializeServer(&wg, user, config, postgresDBInstance, bookRepository, loanRepository)
 
 	wg.Wait()
 	waitForShutdown(appInstance, postgresConn)
@@ -58,7 +58,10 @@ func initializeEnv() *config.EnvConfig {
 	return config
 }
 
-func initializeDatabases(config *config.EnvConfig) (*entity.User, repository.RDBMS, pgdb.BookRepository, pgdb.LoanRepository) {
+func initializeDatabases(config *config.EnvConfig) (
+	*entity.User, repository.RDBMS,
+	*postgres.PostgresDB, pgdb.BookRepository, pgdb.LoanRepository,
+) {
 	user := getDummyUserData()
 
 	postgresDB := &postgres.PostgresDB{}
@@ -70,19 +73,22 @@ func initializeDatabases(config *config.EnvConfig) (*entity.User, repository.RDB
 
 	bookRepository := postgres.NewBookRepository(postgresDBInstance.Dbpool)
 	loanRepository := postgres.NewLoanRepository(postgresDBInstance.Dbpool)
-	return user, postgresConnection, bookRepository, loanRepository
+	return user, postgresConnection, postgresDBInstance, bookRepository, loanRepository
 }
 
 func initializeServer(
-	wg *sync.WaitGroup, user *entity.User,
-	config *config.EnvConfig, bookRepository pgdb.BookRepository, loanRepository pgdb.LoanRepository) *fiber.App {
+	wg *sync.WaitGroup, user *entity.User, config *config.EnvConfig,
+	postgresDBInstance *postgres.PostgresDB,
+	bookRepository pgdb.BookRepository,
+	loanRepository pgdb.LoanRepository,
+) *fiber.App {
 
 	wg.Add(1)
 	defer wg.Done()
 
 	bookService := interfaceSvc.NewBookService(bookRepository)
 	loanService := interfaceSvc.NewLoanService(*user, bookRepository, loanRepository)
-	appInstance := rest.NewRouter(bookService, loanService)
+	appInstance := rest.NewRouter(config, postgresDBInstance, bookService, loanService)
 
 	go func() {
 		rest.StartServer(appInstance, config.Port)
