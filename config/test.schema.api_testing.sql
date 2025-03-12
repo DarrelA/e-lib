@@ -1,22 +1,23 @@
-DROP TABLE IF EXISTS actual;
+DROP TABLE IF EXISTS Actual;
 
-DROP TABLE IF EXISTS expected;
+DROP TABLE IF EXISTS Expected;
 
-CREATE TABLE expected(
-  id int PRIMARY KEY,
+CREATE TABLE Expected(
+  id serial PRIMARY KEY,
   method varchar(255) NOT NULL,
-  url varchar(255) NOT NULL,
-  statusCode int NOT NULL,
-  resBodyContains text
+  url_path varchar(255) NOT NULL,
+  status_code int NOT NULL,
+  res_body_contains text
 );
 
-CREATE TABLE actual(
-  id int PRIMARY KEY,
-  method varchar(255) NOT NULL,
-  expectedId int NOT NULL,
-  statusCode int NOT NULL,
-  reqBody text,
-  createdAt timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (expectedId) REFERENCES expected(id)
+CREATE TABLE Actual(
+  id serial PRIMARY KEY,
+  expected_id int NOT NULL,
+  status_code int NOT NULL,
+  req_url_query_string text,
+  req_body text,
+  res_body text,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (expected_id) REFERENCES Expected(id)
 );
 

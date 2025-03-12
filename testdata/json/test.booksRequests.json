@@ -1,8 +1,0 @@
-[{"id":"1","method":"GET","url_path":"/Book","url_query_string":"title=tAken","json_body_request":{}},
-{"id":"2","method":"POST","url_path":"/Borrow","url_query_string":"","json_body_request":{"title":"taken"}},
-{"id":"3","method":"POST","url_path":"/Extend","url_query_string":"","json_body_request":{"title":"taken"}},
-{"id":"4","method":"POST","url_path":"/Return","url_query_string":"","json_body_request":{"title":"taken"}},
-{"id":"5","method":"POST","url_path":"/Borrow","url_query_string":"","json_body_request":{"title":"taken"}},
-{"id":"6","method":"POST","url_path":"/Extend","url_query_string":"","json_body_request":{"title":"taken"}},
-{"id":"7","method":"POST","url_path":"/Return","url_query_string":"","json_body_request":{"title":"taken"}},
-{"id":"8","method":"GET","url_path":"/Book","url_query_string":"title=tAken","json_body_request":{}}]

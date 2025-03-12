@@ -2,7 +2,7 @@
 
 # Testdata files
 TESTDATA_JSON_FILES=(
-    "./testdata/json/test.booksRequests.json" # Single test file
+    "./testdata/json/test.booksActualReq.json" # Single test file
 )
 
 # Base URL (move this to the test data or environment if it changes)

@@ -95,6 +95,11 @@ Refer to `Makefile` for all the commands.
 ```sh
 chmod +x ./deployment/scripts/integration_test.sh
 chmod +x ./deployment/scripts/wrap_test_for_coverage.sh
+
+# Get Postgres container id
+docker ps
+# Execute a command inside a running Docker container
+docker exec -it <your_container_id> psql -U <your_username> -d elib
 ```
 
 # Roadmap
