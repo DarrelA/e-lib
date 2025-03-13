@@ -46,12 +46,9 @@ func (e *EnvConfig) LoadPostgresConfig() {
 }
 
 func (e *EnvConfig) LoadOAuth2Config() {
-	protocol := checkEmptyEnvVar("PROTOCOL")
-	domain := checkEmptyEnvVar("DOMAIN")
-
 	// Google Cloud Console -> Credentials -> OAuth 2.0 Client IDs -> Authorized redirect URIs
 	e.OAuth2Config = &entity.OAuth2Config{
-		GoogleRedirectURL:  protocol + domain + ":" + e.Port + "/auth/google_callback",
+		GoogleRedirectURL:  "http://localhost:" + e.Port + "/auth/google_callback",
 		GoogleClientID:     checkEmptyEnvVar("GOOGLE_CLIENT_ID"),
 		GoogleClientSecret: checkEmptyEnvVar("GOOGLE_CLIENT_SECRET"),
 		Scopes: []string{

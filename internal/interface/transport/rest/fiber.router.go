@@ -43,6 +43,21 @@ func NewRouter(
 	})
 
 	/********************
+	*   AuthService   *
+	********************/
+	auth := appInstance.Group("/auth")
+	auth.Get("/google_login", googleOAuth2Service.Login)
+	auth.Get("/google_callback", googleOAuth2Service.Callback)
+
+	/********************
+	*       e-Lib       *
+	********************/
+	appInstance.Use(mw.InputValidator)
+	if config.AppEnv == "test" {
+		appInstance.Use(mw.SaveTestResToDB)
+	}
+
+	/********************
 	 *   BookService   *
 	 ********************/
 	appInstance.Get("/Book", bookService.GetBookByTitleHandler)
@@ -53,13 +68,6 @@ func NewRouter(
 	appInstance.Post("/Borrow", loanService.BorrowBookHandler)
 	appInstance.Post("/Extend", loanService.ExtendBookLoanHandler)
 	appInstance.Post("/Return", loanService.ReturnBookHandler)
-
-	/********************
-	*   AuthService   *
-	********************/
-	auth := appInstance.Group("/auth")
-	auth.Get("/google_login", googleOAuth2Service.Login)
-	auth.Get("/google_callback", googleOAuth2Service.Callback)
 
 	appInstance.All("*", func(c *fiber.Ctx) error {
 		path := c.Path()
@@ -85,8 +93,4 @@ func useMiddlewares(appInstance *fiber.App, appEnv string, dbpool *pgxpool.Pool)
 
 	appInstance.Use(requestid.New())
 	appInstance.Use(mw.Logger)
-	appInstance.Use(mw.InputValidator)
-	if appEnv == "test" {
-		appInstance.Use(mw.SaveTestResToDB)
-	}
 }
