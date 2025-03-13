@@ -31,16 +31,25 @@ func NewLoanService(
 }
 
 func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
-	borrowBook := c.Locals("bookTitleKey").(dto.BookRequest)
-	loanDetail, err := ls.BorrowBook(borrowBook)
+	borrowBook, ok := c.Locals("bookTitleKey").(dto.BookRequest)
+	if !ok {
+		log.Error().Msg("bookTitleKey not found or has incorrect type.")
+	}
+
+	requestId, ok := c.Locals("requestid").(string)
+	if !ok {
+		log.Error().Msg("requestid not found or has incorrect type.")
+	}
+
+	loanDetail, err := ls.BorrowBook(requestId, borrowBook)
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
 	return c.Status(fiber.StatusOK).JSON(loanDetail)
 }
 
-func (ls *LoanService) BorrowBook(bookRequest dto.BookRequest) (*dto.LoanDetail, *apperrors.RestErr) {
-	bookDetail, restErr := ls.bookPGDB.GetBook(bookRequest.Title)
+func (ls *LoanService) BorrowBook(requestId string, bookRequest dto.BookRequest) (*dto.LoanDetail, *apperrors.RestErr) {
+	bookDetail, restErr := ls.bookPGDB.GetBook(requestId, bookRequest.Title)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return nil, restErr
@@ -51,7 +60,7 @@ func (ls *LoanService) BorrowBook(bookRequest dto.BookRequest) (*dto.LoanDetail,
 		return nil, apperrors.NewBadRequestError(fmt.Sprintf(warnMsgOutOfStock, bookRequest))
 	}
 
-	loanDetail, err := ls.loanPGDB.BorrowBook(ls.user, bookDetail)
+	loanDetail, err := ls.loanPGDB.BorrowBook(requestId, ls.user, bookDetail)
 	if err != nil {
 		return nil, err
 	}
@@ -60,22 +69,31 @@ func (ls *LoanService) BorrowBook(bookRequest dto.BookRequest) (*dto.LoanDetail,
 }
 
 func (ls *LoanService) ExtendBookLoanHandler(c *fiber.Ctx) error {
-	borrowBook := c.Locals("bookTitleKey").(dto.BookRequest)
-	loanDetail, err := ls.ExtendBookLoan(borrowBook)
+	borrowBook, ok := c.Locals("bookTitleKey").(dto.BookRequest)
+	if !ok {
+		log.Error().Msg("bookTitleKey not found or has incorrect type.")
+	}
+
+	requestId, ok := c.Locals("requestid").(string)
+	if !ok {
+		log.Error().Msg("requestid not found or has incorrect type.")
+	}
+
+	loanDetail, err := ls.ExtendBookLoan(requestId, borrowBook)
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
 	return c.Status(fiber.StatusOK).JSON(loanDetail)
 }
 
-func (ls *LoanService) ExtendBookLoan(bookRequest dto.BookRequest) (*dto.LoanDetail, *apperrors.RestErr) {
-	bookDetail, restErr := ls.bookPGDB.GetBook(bookRequest.Title)
+func (ls *LoanService) ExtendBookLoan(requestId string, bookRequest dto.BookRequest) (*dto.LoanDetail, *apperrors.RestErr) {
+	bookDetail, restErr := ls.bookPGDB.GetBook(requestId, bookRequest.Title)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return nil, restErr
 	}
 
-	loanDetail, restErr := ls.loanPGDB.ExtendBookLoan(ls.user.ID, bookDetail)
+	loanDetail, restErr := ls.loanPGDB.ExtendBookLoan(requestId, ls.user.ID, bookDetail)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return nil, restErr
@@ -85,22 +103,31 @@ func (ls *LoanService) ExtendBookLoan(bookRequest dto.BookRequest) (*dto.LoanDet
 }
 
 func (ls *LoanService) ReturnBookHandler(c *fiber.Ctx) error {
-	borrowBook := c.Locals("bookTitleKey").(dto.BookRequest)
-	err := ls.ReturnBook(borrowBook)
+	borrowBook, ok := c.Locals("bookTitleKey").(dto.BookRequest)
+	if !ok {
+		log.Error().Msg("bookTitleKey not found or has incorrect type.")
+	}
+
+	requestId, ok := c.Locals("requestid").(string)
+	if !ok {
+		log.Error().Msg("requestid not found or has incorrect type.")
+	}
+
+	err := ls.ReturnBook(requestId, borrowBook)
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"status": "success"})
 }
 
-func (ls *LoanService) ReturnBook(bookRequest dto.BookRequest) *apperrors.RestErr {
-	bookDetail, restErr := ls.bookPGDB.GetBook(bookRequest.Title)
+func (ls *LoanService) ReturnBook(requestId string, bookRequest dto.BookRequest) *apperrors.RestErr {
+	bookDetail, restErr := ls.bookPGDB.GetBook(requestId, bookRequest.Title)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return restErr
 	}
 
-	restErr = ls.loanPGDB.ReturnBook(ls.user.ID, bookDetail.UUID)
+	restErr = ls.loanPGDB.ReturnBook(requestId, ls.user.ID, bookDetail.UUID)
 	if restErr != nil {
 		log.Error().Err(restErr).Msgf("")
 		return restErr

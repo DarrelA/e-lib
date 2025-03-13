@@ -6,6 +6,7 @@ import (
 	appSvc "github.com/DarrelA/e-lib/internal/application/services"
 	repository "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
 	"github.com/gofiber/fiber/v2"
+	"github.com/rs/zerolog/log"
 )
 
 const (
@@ -22,8 +23,17 @@ func NewBookService(bookPGDB repository.BookRepository) appSvc.BookService {
 }
 
 func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
-	bookRequest := c.Locals("bookTitleKey").(dto.BookRequest)
-	bookDetail, err := bs.GetBookByTitle(bookRequest)
+	bookRequest, ok := c.Locals("bookTitleKey").(dto.BookRequest)
+	if !ok {
+		log.Error().Msg("bookTitleKey not found or has incorrect type.")
+	}
+
+	requestId, ok := c.Locals("requestid").(string)
+	if !ok {
+		log.Error().Msg("requestid not found or has incorrect type.")
+	}
+
+	bookDetail, err := bs.GetBookByTitle(requestId, bookRequest)
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
@@ -31,8 +41,8 @@ func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(bookDetail)
 }
 
-func (bs *BookService) GetBookByTitle(bookRequest dto.BookRequest) (*dto.BookDetail, *apperrors.RestErr) {
-	bookDetail, err := bs.bookPGDB.GetBook(bookRequest.Title)
+func (bs *BookService) GetBookByTitle(requestId string, bookRequest dto.BookRequest) (*dto.BookDetail, *apperrors.RestErr) {
+	bookDetail, err := bs.bookPGDB.GetBook(requestId, bookRequest.Title)
 	if err != nil {
 		return nil, apperrors.NewNotFoundError(errMsgBookNotFound)
 	}

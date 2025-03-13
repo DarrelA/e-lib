@@ -33,8 +33,8 @@ type mockBookRepository struct {
 	ExpectedBook *dto.BookDetail
 }
 
-func (m *mockBookRepository) GetBook(title string) (*dto.BookDetail, *apperrors.RestErr) {
-	args := m.Called(strings.ToLower(title))
+func (m *mockBookRepository) GetBook(requestId string, title string) (*dto.BookDetail, *apperrors.RestErr) {
+	args := m.Called(requestId, strings.ToLower(title))
 	book, ok := args.Get(0).(*dto.BookDetail)
 	if !ok {
 		return nil, args.Get(1).(*apperrors.RestErr)
@@ -44,24 +44,24 @@ func (m *mockBookRepository) GetBook(title string) (*dto.BookDetail, *apperrors.
 
 type mockLoanRepository struct{ mock.Mock }
 
-func (m *mockLoanRepository) BorrowBook(user entity.User, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
-	args := m.Called(user, bookDetail.UUID)
+func (m *mockLoanRepository) BorrowBook(requestId string, user entity.User, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
+	args := m.Called(requestId, user, bookDetail.UUID)
 	if args.Get(0) == nil {
 		return nil, args.Get(1).(*apperrors.RestErr)
 	}
 	return args.Get(0).(*dto.LoanDetail), nil
 }
 
-func (m *mockLoanRepository) ExtendBookLoan(user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
-	args := m.Called(user_id, bookDetail)
+func (m *mockLoanRepository) ExtendBookLoan(requestId string, user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
+	args := m.Called(requestId, user_id, bookDetail)
 	if args.Get(0) == nil {
 		return nil, args.Get(1).(*apperrors.RestErr)
 	}
 	return args.Get(0).(*dto.LoanDetail), nil
 }
 
-func (m *mockLoanRepository) ReturnBook(user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
-	args := m.Called(user_id, book_uuid)
+func (m *mockLoanRepository) ReturnBook(requestId string, user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
+	args := m.Called(requestId, user_id, book_uuid)
 	err := args.Get(0)
 	if err == nil {
 		return nil
@@ -115,10 +115,10 @@ func TestRoutes(t *testing.T) {
 	bookService := interfaceSvc.NewBookService(mockBookRepo)
 
 	mockLoanRepo := new(mockLoanRepository)
-	mockBookRepo.On("GetBook", lowerCaseBookTitle).Return(&expectedBook, nil)
-	mockLoanRepo.On("BorrowBook", testUser, bookUUID).Return(&expectedLoan, nil)
-	mockLoanRepo.On("ExtendBookLoan", testUser.ID, &expectedBook).Return(&extendedLoan, nil)
-	mockLoanRepo.On("ReturnBook", testUser.ID, bookUUID).Return(nil, nil)
+	mockBookRepo.On("GetBook", mock.Anything, lowerCaseBookTitle).Return(&expectedBook, nil)
+	mockLoanRepo.On("BorrowBook", mock.Anything, testUser, bookUUID).Return(&expectedLoan, nil)
+	mockLoanRepo.On("ExtendBookLoan", mock.Anything, testUser.ID, &expectedBook).Return(&extendedLoan, nil)
+	mockLoanRepo.On("ReturnBook", mock.Anything, testUser.ID, bookUUID).Return(nil, nil)
 
 	loanService := interfaceSvc.NewLoanService(testUser, mockBookRepo, mockLoanRepo)
 	app := NewRouter(config, postgresDBInstance, bookService, loanService)

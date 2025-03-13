@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"time"
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
@@ -56,11 +57,15 @@ var (
 `
 )
 
-func (lr LoanRepository) BorrowBook(user entity.User, bookDetail *dto.BookDetail) (
+func (lr LoanRepository) BorrowBook(requestId string, user entity.User, bookDetail *dto.BookDetail) (
 	*dto.LoanDetail, *apperrors.RestErr) {
 
 	var existingLoanCount int
-	ctx := context.Background()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx = context.WithValue(ctx, entity.RequestIdKey, requestId)
+
 	tx, err := lr.dbpool.Begin(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("")
@@ -110,9 +115,14 @@ func (lr LoanRepository) BorrowBook(user entity.User, bookDetail *dto.BookDetail
 	return loanDetail, nil
 }
 
-func (lr LoanRepository) ExtendBookLoan(user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
+func (lr LoanRepository) ExtendBookLoan(requestId string, user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
 	loanDetail := &dto.LoanDetail{BookTitle: bookDetail.Title}
-	err := lr.dbpool.QueryRow(context.Background(), queryExtendReturnDate, user_id, bookDetail.UUID).
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx = context.WithValue(ctx, entity.RequestIdKey, requestId)
+
+	err := lr.dbpool.QueryRow(ctx, queryExtendReturnDate, user_id, bookDetail.UUID).
 		Scan(&loanDetail.NameOfBorrower, &loanDetail.LoanDate, &loanDetail.ReturnDate)
 
 	if err != nil {
@@ -123,9 +133,13 @@ func (lr LoanRepository) ExtendBookLoan(user_id int64, bookDetail *dto.BookDetai
 	return loanDetail, nil
 }
 
-func (lr LoanRepository) ReturnBook(user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
+func (lr LoanRepository) ReturnBook(requestId string, user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
 	var loanID uuid.UUID
-	ctx := context.Background()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	ctx = context.WithValue(ctx, entity.RequestIdKey, requestId)
+
 	tx, err := lr.dbpool.Begin(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg("")

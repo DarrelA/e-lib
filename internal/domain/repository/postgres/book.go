@@ -6,5 +6,5 @@ import (
 )
 
 type BookRepository interface {
-	GetBook(title string) (*dto.BookDetail, *apperrors.RestErr)
+	GetBook(requestId string, title string) (*dto.BookDetail, *apperrors.RestErr)
 }

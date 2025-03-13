@@ -7,6 +7,7 @@ import (
 	"github.com/DarrelA/e-lib/internal/infrastructure/db/postgres"
 	mw "github.com/DarrelA/e-lib/internal/interface/middleware"
 	"github.com/gofiber/fiber/v2"
+	"github.com/gofiber/fiber/v2/middleware/requestid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
@@ -74,6 +75,7 @@ func useMiddlewares(appInstance *fiber.App, appEnv string, dbpool *pgxpool.Pool)
 		return c.Next()
 	})
 
+	appInstance.Use(requestid.New())
 	appInstance.Use(mw.Logger)
 	appInstance.Use(mw.InputValidator)
 	if appEnv == "test" {

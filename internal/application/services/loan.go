@@ -9,11 +9,11 @@ import (
 // LoanService defines the interface for managing loan-related operations (e.g., creating, retrieving, or processing loans).
 type LoanService interface {
 	BorrowBookHandler(c *fiber.Ctx) error
-	BorrowBook(bookRequest dto.BookRequest) (*dto.LoanDetail, *apperrors.RestErr)
+	BorrowBook(requestId string, bookRequest dto.BookRequest) (*dto.LoanDetail, *apperrors.RestErr)
 
 	ExtendBookLoanHandler(c *fiber.Ctx) error
-	ExtendBookLoan(bookRequest dto.BookRequest) (*dto.LoanDetail, *apperrors.RestErr)
+	ExtendBookLoan(requestId string, bookRequest dto.BookRequest) (*dto.LoanDetail, *apperrors.RestErr)
 
 	ReturnBookHandler(c *fiber.Ctx) error
-	ReturnBook(bookRequest dto.BookRequest) *apperrors.RestErr
+	ReturnBook(requestId string, bookRequest dto.BookRequest) *apperrors.RestErr
 }
