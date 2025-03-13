@@ -1,7 +1,8 @@
 - [Hexagonal Architecture with Domain Driven Design (DDD)](#hexagonal-architecture-with-domain-driven-design-ddd)
   - [Hexagonal Architecture vs Onion Architecture](#hexagonal-architecture-vs-onion-architecture)
   - [`application/dto`](#applicationdto)
-- [Resources](#resources)
+  - [Resources](#resources)
+- [Redis for Session Management](#redis-for-session-management)
 
 # Hexagonal Architecture with Domain Driven Design (DDD)
 
@@ -41,9 +42,17 @@ The hexagons can be mapped almost one-to-one to the rings of the onion architect
 
 **No Business Logic**: DTOs should not contain business logic. They are purely data containers. BookTitleAvailability adheres to this; it only holds data and has no methods that perform any logic.
 
-# Resources
+## Resources
 
 - [GeeksforGeeks - Hexagonal Architecture - System Design](https://www.geeksforgeeks.org/hexagonal-architecture-system-design/)
 - [HappyCoders - Hexagonal Architecture - What is it? Why should you use it?](https://www.happycoders.eu/software-craftsmanship/hexagonal-architecture/)
 - [Netflix Technology Blog - Ready for changes with Hexagonal Architecture](https://netflixtechblog.com/ready-for-changes-with-hexagonal-architecture-b315ec967749)
 - [Redis - Domain Driven Design (DDD)](https://redis.io/glossary/domain-driven-design-ddd/)
+
+# Redis for Session Management
+
+- **High-traffic applications**: Redis provides superior performance for session reads/writes.
+- **Real-time features**: Redis Pub/Sub and in-memory data storage are essential for low-latency messaging and user presence management.
+- **Fine-grained access control with frequent checks**: Redis offers fast lookups for permissions and roles.
+- **Temporary session-related data tracking (e.g., recently viewed items)**: Redis is an efficient cache for this type of information.
+- **Independent scalability for session management**: You can scale Redis independently of your primary PostgreSQL database.

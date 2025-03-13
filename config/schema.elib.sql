@@ -7,6 +7,20 @@ CREATE TABLE IF NOT EXISTS Users(
   updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
+-- Create the AuthProviders table
+CREATE TABLE IF NOT EXISTS AuthProviders(
+  id PRIMARY KEY,
+  user_id bigint NOT NULL,
+  name varchar(255) NOT NULL,
+  email varchar(255) NOT NULL,
+  verified_email boolean NOT NULL DEFAULT FALSE,
+  provider varchar(45) UNIQUE NOT NULL,
+  created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (user_id) REFERENCES Users(id),
+  UNIQUE (provider, email) -- Ensure that provider and email combination is unique
+);
+
 -- Create the Book table
 CREATE TABLE IF NOT EXISTS Books(
   uuid uuid PRIMARY KEY,
