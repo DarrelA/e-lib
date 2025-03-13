@@ -13,8 +13,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-var expectedId = 1
-
 func SaveTestResToDB(c *fiber.Ctx) error {
 	dbpool, ok := c.Locals("dbpool").(*pgxpool.Pool)
 	if !ok {
@@ -60,7 +58,6 @@ func SaveTestResToDB(c *fiber.Ctx) error {
 	}()
 
 	actual := entity.Actual{
-		ExpectedId:        expectedId,
 		StatusCode:        statusCode,
 		ReqUrlQueryString: reqUrlQueryString.Title,
 		ReqBody:           reqBody,
@@ -69,9 +66,9 @@ func SaveTestResToDB(c *fiber.Ctx) error {
 	}
 
 	if err := insertActual(ctx, tx, actual); err != nil {
-		err := apperrors.NewInternalServerError("error inserting into actual table")
+		restErr := apperrors.NewInternalServerError("error inserting into actual table")
 		log.Error().Err(err).Msg("")
-		return c.Status(err.Status).JSON(err)
+		return c.Status(restErr.Status).JSON(restErr)
 	}
 
 	return nil
@@ -79,12 +76,9 @@ func SaveTestResToDB(c *fiber.Ctx) error {
 
 func insertActual(ctx context.Context, tx pgx.Tx, actual entity.Actual) error {
 	query := `
-		INSERT INTO Actual (expected_id, status_code, req_url_query_string, req_body, res_body, created_at)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		INSERT INTO Actual (status_code, req_url_query_string, req_body, res_body, created_at)
+		VALUES ($1, $2, $3, $4, $5)
 	`
-	_, err := tx.Exec(ctx, query, actual.ExpectedId, actual.StatusCode, actual.ReqUrlQueryString, actual.ReqBody, actual.ResBody, actual.CreatedAt)
-
-	log.Info().Msgf("expectedId: %d", expectedId)
-	expectedId++
+	_, err := tx.Exec(ctx, query, actual.StatusCode, actual.ReqUrlQueryString, actual.ReqBody, actual.ResBody, actual.CreatedAt)
 	return err
 }
