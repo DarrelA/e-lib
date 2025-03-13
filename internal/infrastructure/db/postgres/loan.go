@@ -45,7 +45,7 @@ var (
 	queryExtendReturnDate = `
 		UPDATE loans SET return_date = return_date + interval '3 weeks'
 		WHERE user_id = $1 AND book_uuid = $2 AND is_returned = FALSE
-		returning name_of_borrower, return_date, return_date
+		returning name_of_borrower, loan_date, return_date
 	`
 
 	queryLoanID                  = "SELECT uuid FROM loans WHERE user_id = $1 AND book_uuid = $2 AND is_returned = FALSE"
