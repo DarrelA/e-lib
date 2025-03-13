@@ -222,6 +222,7 @@ func (lr LoanRepository) ExtendBookLoan(requestId string, user_id int64, bookDet
 
 	return loanDetail, nil
 }
+
 func (lr LoanRepository) ReturnBook(requestId string, user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
 	var loanId uuid.UUID
 
@@ -260,7 +261,7 @@ func (lr LoanRepository) ReturnBook(requestId string, user_id int64, book_uuid u
 			return rErr
 		}
 		log.Error().Err(err).Msg("Failed to query loan ID")
-		rErr := apperrors.NewInternalServerError(errMsgBookNotFound)
+		rErr := apperrors.NewInternalServerError(errMsgNoActiveLoan)
 		if rbErr := tx.Rollback(ctx); rbErr != nil {
 			log.Error().Err(rbErr).Msg("Rollback failed during error handling")
 		}

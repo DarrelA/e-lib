@@ -109,7 +109,7 @@ docker exec -it <your_container_id> psql -U <your_username> -d elib
 - [x] Integrate PostgreSQL for persistent data storage.
 - [x] Implement logging for API requests and responses.
 - [x] Add validation for each API (e.g., missing or invalid input).
-- [ ] Write tests for coverage and regression.
+- [x] Write tests for coverage and regression.
 - [ ] Integrate SingPass MyInfo for user authentication.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
