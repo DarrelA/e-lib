@@ -7,6 +7,7 @@ type (
 		PathToSQLSchema     string
 		PathToBooksJsonFile string
 		PostgresDBConfig    *PostgresDBConfig
+		OAuth2Config        *OAuth2Config
 	}
 
 	PostgresDBConfig struct {
@@ -17,5 +18,12 @@ type (
 		Name         string
 		SslMode      string
 		PoolMaxConns string
+	}
+
+	OAuth2Config struct {
+		GoogleRedirectURL  string
+		GoogleClientID     string
+		GoogleClientSecret string
+		Scopes             []string
 	}
 )
