@@ -24,6 +24,7 @@ CREATE TABLE IF NOT EXISTS Loans(
   name_of_borrower varchar(255) NOT NULL,
   loan_date timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   return_date timestamp with time zone NOT NULL,
+  is_extended boolean NOT NULL DEFAULT FALSE,
   is_returned boolean NOT NULL DEFAULT FALSE,
   FOREIGN KEY (user_id) REFERENCES Users(id),
   FOREIGN KEY (book_uuid) REFERENCES Books(uuid)

@@ -26,6 +26,7 @@ This is a simple RESTful API to manage loan of e-book in an electronic library. 
 ## Assumptions
 
 - Each user can only borrow one copy per book.
+- Each user can only extend each book once.
 
 # Getting Started
 

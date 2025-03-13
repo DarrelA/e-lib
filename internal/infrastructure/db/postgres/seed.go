@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/DarrelA/e-lib/config"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
@@ -47,7 +48,9 @@ type SeedRepository struct {
 }
 
 func NewRepository(config *config.EnvConfig, dbpool *pgxpool.Pool, user *entity.User) postgres.SeedRepository {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	var schemasToExecute []string
 	schemasToExecute = append(schemasToExecute, config.PathToSQLSchema)
 	if config.AppEnv == "test" {
@@ -103,7 +106,8 @@ func (sr SeedRepository) SeedBooks() error {
 	}
 
 	err = sr.executeTransaction(func(tx pgx.Tx) error {
-		ctx := context.Background()
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		defer cancel()
 
 		for _, book := range books {
 			_, err := tx.Exec(ctx, insertBooksStmt, strings.ToLower(book.Title), book.AvailableCopies)
@@ -126,7 +130,9 @@ func (sr SeedRepository) SeedBooks() error {
 type TxFunc func(pgx.Tx) error
 
 func (sr SeedRepository) executeTransaction(txFunc TxFunc) error {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	tx, err := sr.dbpool.Begin(ctx)
 	if err != nil {
 		log.Error().Err(err).Msg(errMsgTransactionError)
