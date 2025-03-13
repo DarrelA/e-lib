@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	errMsgExistingLoan         = "User has already borrowed this book."
-	errMsgNoActiveLoan         = "No active loan found for this user and book"
-	errMsgExistingExtendedLoan = "User has already borrowed and extended this book."
-	errMsgBookNotLoan          = "User has not loan this book."
+	errMsgExistingLoan         = "user has already borrowed this book."
+	errMsgNoActiveLoan         = "no active loan found for this user and book"
+	errMsgExistingExtendedLoan = "user has already borrowed and extended this book."
+	errMsgBookNotLoan          = "user has not loan this book."
 )
 
 type LoanRepository struct {
@@ -73,7 +73,7 @@ func (lr LoanRepository) BorrowBook(requestId string, user entity.User, bookDeta
 
 	tx, err := lr.dbpool.Begin(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("")
+		log.Error().Err(err).Msg("Failed to begin transaction")
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
@@ -81,29 +81,45 @@ func (lr LoanRepository) BorrowBook(requestId string, user entity.User, bookDeta
 		if err != nil {
 			errRollback := tx.Rollback(ctx)
 			if errRollback != nil {
-				log.Error().Err(errRollback).Msg("")
+				log.Error().Err(errRollback).Msg("Transaction rollback failed")
+			} else {
+				log.Info().Msg("Transaction rollback successfully")
 			}
+		} else {
+			log.Info().Msg("Transaction committed successfully")
 		}
 	}()
 
-	err = lr.dbpool.QueryRow(ctx, queryCheckExistingLoan, user.ID, bookDetail.UUID).Scan(&existingLoanCount)
+	err = tx.QueryRow(ctx, queryCheckExistingLoan, user.ID, bookDetail.UUID).Scan(&existingLoanCount)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			existingLoanCount = 0
 		} else {
-			log.Error().Err(err).Msg("")
-			return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+			log.Error().Err(err).Msg("Failed to check existing loan")
+			rErr := apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+			}
+			return nil, rErr
 		}
 	}
 
 	if existingLoanCount > 0 {
-		return nil, apperrors.NewBadRequestError(errMsgExistingLoan)
+		rErr := apperrors.NewBadRequestError(errMsgExistingLoan)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+		}
+		return nil, rErr
 	}
 
 	_, err = tx.Exec(ctx, execDecrementAvailableCopies, bookDetail.UUID)
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		log.Error().Err(err).Msg("Failed to decrement available copies")
+		rErr := apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+		}
+		return nil, rErr
 	}
 
 	loanDetail := &dto.LoanDetail{BookTitle: bookDetail.Title}
@@ -111,15 +127,20 @@ func (lr LoanRepository) BorrowBook(requestId string, user entity.User, bookDeta
 		Scan(&loanDetail.NameOfBorrower, &loanDetail.LoanDate, &loanDetail.ReturnDate)
 
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		log.Error().Err(err).Msg("Failed to insert loan")
+		rErr := apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+		}
+		return nil, rErr
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("")
+		log.Error().Err(err).Msg("Failed to commit transaction")
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
+	err = nil // clear the err, so Rollback wont be executed.
 
 	return loanDetail, nil
 }
@@ -134,30 +155,43 @@ func (lr LoanRepository) ExtendBookLoan(requestId string, user_id int64, bookDet
 
 	tx, err := lr.dbpool.Begin(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("")
+		log.Error().Err(err).Msg("Failed to begin transaction")
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
 	defer func() {
 		if err != nil {
-			if errRollback := tx.Rollback(ctx); errRollback != nil {
+			errRollback := tx.Rollback(ctx)
+			if errRollback != nil {
 				log.Error().Err(errRollback).Msg("Transaction rollback failed")
+			} else {
+				log.Info().Msg("Transaction rollback successfully")
 			}
+		} else {
+			log.Info().Msg("Transaction committed successfully")
 		}
 	}()
 
-	err = lr.dbpool.QueryRow(ctx, queryCheckIsExtended, user_id, bookDetail.UUID).Scan(&isExtended)
+	err = tx.QueryRow(ctx, queryCheckIsExtended, user_id, bookDetail.UUID).Scan(&isExtended)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			isExtended = false
 		} else {
-			log.Error().Err(err).Msg("")
-			return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+			log.Error().Err(err).Msg("Failed to check if loan is extended")
+			rErr := apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+			}
+			return nil, rErr
 		}
 	}
 
 	if isExtended {
-		return nil, apperrors.NewBadRequestError(errMsgExistingExtendedLoan)
+		rErr := apperrors.NewBadRequestError(errMsgExistingExtendedLoan)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+		}
+		return nil, rErr
 	}
 
 	err = tx.QueryRow(ctx, queryExtendReturnDate, user_id, bookDetail.UUID).
@@ -165,20 +199,29 @@ func (lr LoanRepository) ExtendBookLoan(requestId string, user_id int64, bookDet
 
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, apperrors.NewNotFoundError(errMsgNoActiveLoan)
+			rErr := apperrors.NewNotFoundError(errMsgNoActiveLoan)
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+			}
+			return nil, rErr
 		}
-		log.Error().Err(err).Msg("")
-		return nil, apperrors.NewInternalServerError(errMsgBookNotLoan)
+		log.Error().Err(err).Msg("Failed to extend return date")
+		rErr := apperrors.NewInternalServerError(errMsgBookNotLoan)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+		}
+		return nil, rErr
 	}
 
-	if err = tx.Commit(ctx); err != nil {
-		log.Error().Err(err).Msg("")
+	err = tx.Commit(ctx)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to commit transaction")
 		return nil, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
+	err = nil // clear the err, so Rollback wont be executed.
 
 	return loanDetail, nil
 }
-
 func (lr LoanRepository) ReturnBook(requestId string, user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
 	var loanId uuid.UUID
 
@@ -188,7 +231,7 @@ func (lr LoanRepository) ReturnBook(requestId string, user_id int64, book_uuid u
 
 	tx, err := lr.dbpool.Begin(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("")
+		log.Error().Err(err).Msg("Failed to begin transaction")
 		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
 
@@ -196,38 +239,60 @@ func (lr LoanRepository) ReturnBook(requestId string, user_id int64, book_uuid u
 		if err != nil {
 			errRollback := tx.Rollback(ctx)
 			if errRollback != nil {
-				log.Error().Err(errRollback).Msg("")
+				log.Error().Err(errRollback).Msg("Transaction rollback failed")
+			} else {
+				log.Info().Msg("Transaction rollback successfully")
 			}
+		} else {
+			log.Info().Msg("Transaction committed successfully")
 		}
 	}()
 
-	err = lr.dbpool.QueryRow(ctx, queryLoanID, user_id, book_uuid).Scan(&loanId)
+	err = tx.QueryRow(ctx, queryLoanID, user_id, book_uuid).Scan(&loanId)
 	if err != nil {
-		if err == pgx.ErrNoRows {
+		if errors.Is(err, pgx.ErrNoRows) {
+			err = errors.New(errMsgNoActiveLoan) // set err, so Rollback can be executed.
 			log.Error().Err(err).Msg(errMsgNoActiveLoan)
-			return apperrors.NewBadRequestError(errMsgNoActiveLoan)
+			rErr := apperrors.NewBadRequestError(errMsgNoActiveLoan)
+			if rbErr := tx.Rollback(ctx); rbErr != nil {
+				log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+			}
+			return rErr
 		}
-		log.Error().Err(err).Msg("")
-		return apperrors.NewInternalServerError(errMsgBookNotFound)
+		log.Error().Err(err).Msg("Failed to query loan ID")
+		rErr := apperrors.NewInternalServerError(errMsgBookNotFound)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+		}
+		return rErr
 	}
 
-	_, err = lr.dbpool.Exec(ctx, execSetIsReturned, loanId)
+	_, err = tx.Exec(ctx, execSetIsReturned, loanId)
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		log.Error().Err(err).Msg("Failed to set is_returned")
+		rErr := apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+		}
+		return rErr
 	}
 
-	_, err = lr.dbpool.Exec(ctx, execIncrementAvailableCopies, book_uuid)
+	_, err = tx.Exec(ctx, execIncrementAvailableCopies, book_uuid)
 	if err != nil {
-		log.Error().Err(err).Msg("")
-		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		log.Error().Err(err).Msg("Failed to increment available copies")
+		rErr := apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
+			log.Error().Err(rbErr).Msg("Rollback failed during error handling")
+		}
+		return rErr
 	}
 
 	err = tx.Commit(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg("")
+		log.Error().Err(err).Msg("Failed to commit transaction")
 		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
+	err = nil // clear the err, so Rollback wont be executed.
 
 	return nil
 }

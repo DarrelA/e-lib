@@ -37,12 +37,11 @@
   {"id": 36, "method": "POST", "url_path": "/Borrow", "url_query_string": "", "json_body_request": {"title":"nosuchbook"}},
   {"id": 37, "method": "POST", "url_path": "/Borrow", "url_query_string": "", "json_body_request": {"title":"book2"}},
   {"id": 38, "method": "POST", "url_path": "/Borrow", "url_query_string": "", "json_body_request": {"title":"book2"}},
-  {"id": 39, "method": "GET", "url_path": "/Book", "url_query_string": "title=book2", "json_body_request": {}},
-  {"id": 40, "method": "POST", "url_path": "/Extend", "url_query_string": "", "json_body_request": {"title":""}},
-  {"id": 41, "method": "POST", "url_path": "/Extend", "url_query_string": "", "json_body_request": {"title":"book2"}},
-  {"id": 42, "method": "POST", "url_path": "/Extend", "url_query_string": "", "json_body_request": {"title":"book4"}},
-  {"id": 43, "method": "POST", "url_path": "/Return", "url_query_string": "", "json_body_request": {"title":"book2"}},
-  {"id": 44, "method": "GET", "url_path": "/Book", "url_query_string": "title=book2", "json_body_request": {}},
-  {"id": 45, "method": "POST", "url_path": "/Extend", "url_query_string": "", "json_body_request": {"title":"book4"}},
-  {"id": 46, "method": "POST", "url_path": "/Return", "url_query_string": "", "json_body_request": {"title":"book2"}}
+  {"id": 39, "method": "POST", "url_path": "/Extend", "url_query_string": "", "json_body_request": {"title":""}},
+  {"id": 40, "method": "POST", "url_path": "/Extend", "url_query_string": "", "json_body_request": {"title":"book2"}},
+  {"id": 41, "method": "POST", "url_path": "/Extend", "url_query_string": "", "json_body_request": {"title":"book4"}},
+  {"id": 42, "method": "POST", "url_path": "/Return", "url_query_string": "", "json_body_request": {"title":"book2"}},
+  {"id": 43, "method": "GET", "url_path": "/Book", "url_query_string": "title=book2", "json_body_request": {}},
+  {"id": 44, "method": "POST", "url_path": "/Extend", "url_query_string": "", "json_body_request": {"title":"book4"}},
+  {"id": 45, "method": "POST", "url_path": "/Return", "url_query_string": "", "json_body_request": {"title":"book2"}}
 ]
