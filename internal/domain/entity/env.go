@@ -22,7 +22,7 @@ type (
 	}
 
 	RedisDBConfig struct {
-		RedisUri string
+		RedisAddr string
 	}
 
 	OAuth2Config struct {

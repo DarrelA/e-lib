@@ -48,7 +48,7 @@ func (e *EnvConfig) LoadPostgresConfig() {
 
 func (e *EnvConfig) LoadRedisConfig() {
 	e.RedisDBConfig = &entity.RedisDBConfig{
-		RedisUri: checkEmptyEnvVar("REDIS_URL"),
+		RedisAddr: checkEmptyEnvVar("REDIS_ADDR"),
 	}
 }
 
