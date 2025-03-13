@@ -50,6 +50,7 @@ func main() {
 func initializeEnv() *config.EnvConfig {
 	envConfig := config.NewEnvConfig()
 	envConfig.LoadServerConfig()
+	envConfig.LoadOAuth2Config()
 	envConfig.LoadPostgresConfig()
 	config, ok := envConfig.(*config.EnvConfig)
 	if !ok {
@@ -89,7 +90,8 @@ func initializeServer(
 
 	bookService := interfaceSvc.NewBookService(bookRepository)
 	loanService := interfaceSvc.NewLoanService(*user, bookRepository, loanRepository)
-	appInstance := rest.NewRouter(config, postgresDBInstance, bookService, loanService)
+	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config)
+	appInstance := rest.NewRouter(config, googleOAuth2Service, postgresDBInstance, bookService, loanService)
 
 	go func() {
 		rest.StartServer(appInstance, config.Port)

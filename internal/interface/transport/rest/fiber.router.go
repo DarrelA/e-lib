@@ -26,6 +26,7 @@ func StartServer(app *fiber.App, port string) {
 
 func NewRouter(
 	config *config.EnvConfig,
+	googleOAuth2Service appSvc.GoogleOAuth2Service,
 	postgresDBInstance *postgres.PostgresDB,
 	bookService appSvc.BookService,
 	loanService appSvc.LoanService,
@@ -42,16 +43,23 @@ func NewRouter(
 	})
 
 	/********************
-	 *   BookServices   *
+	 *   BookService   *
 	 ********************/
 	appInstance.Get("/Book", bookService.GetBookByTitleHandler)
 
 	/********************
-	*   LoanServices   *
+	*   LoanService   *
 	********************/
 	appInstance.Post("/Borrow", loanService.BorrowBookHandler)
 	appInstance.Post("/Extend", loanService.ExtendBookLoanHandler)
 	appInstance.Post("/Return", loanService.ReturnBookHandler)
+
+	/********************
+	*   AuthService   *
+	********************/
+	auth := appInstance.Group("/auth")
+	auth.Get("/google_login", googleOAuth2Service.Login)
+	auth.Get("/google_callback", googleOAuth2Service.Callback)
 
 	appInstance.All("*", func(c *fiber.Ctx) error {
 		path := c.Path()

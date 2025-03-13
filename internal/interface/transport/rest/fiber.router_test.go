@@ -72,6 +72,7 @@ func (m *mockLoanRepository) ReturnBook(requestId string, user_id int64, book_uu
 func initializeEnv() *config.EnvConfig {
 	envConfig := config.NewEnvConfig()
 	envConfig.LoadServerConfig()
+	envConfig.LoadOAuth2Config()
 	envConfig.LoadPostgresConfig()
 	config, _ := envConfig.(*config.EnvConfig)
 	return config
@@ -100,6 +101,8 @@ func TestRoutes(t *testing.T) {
 	}
 
 	config := initializeEnv()
+	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config)
+
 	config.PostgresDBConfig = &entity.PostgresDBConfig{
 		Username:     "testuser",
 		Password:     "testpassword",
@@ -121,7 +124,7 @@ func TestRoutes(t *testing.T) {
 	mockLoanRepo.On("ReturnBook", mock.Anything, testUser.ID, bookUUID).Return(nil, nil)
 
 	loanService := interfaceSvc.NewLoanService(testUser, mockBookRepo, mockLoanRepo)
-	app := NewRouter(config, postgresDBInstance, bookService, loanService)
+	app := NewRouter(config, googleOAuth2Service, postgresDBInstance, bookService, loanService)
 
 	t.Run("GetBookByTitle", func(t *testing.T) {
 		tests := []struct {
