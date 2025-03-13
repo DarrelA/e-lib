@@ -17,6 +17,7 @@ import (
 	"github.com/DarrelA/e-lib/internal/domain/repository"
 	pgdb "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
 	"github.com/DarrelA/e-lib/internal/infrastructure/db/postgres"
+	"github.com/DarrelA/e-lib/internal/infrastructure/db/redis"
 	logger "github.com/DarrelA/e-lib/internal/infrastructure/logger/zerolog"
 	interfaceSvc "github.com/DarrelA/e-lib/internal/interface/services"
 	"github.com/DarrelA/e-lib/internal/interface/transport/rest"
@@ -32,7 +33,7 @@ func main() {
 	logFile := logger.CreateAppLog(logFilePath)
 	logger.NewZeroLogger(logFile)
 	config := initializeEnv()
-	user, postgresConn, postgresDBInstance, bookRepository, loanRepository := initializeDatabases(config)
+	user, redisConn, postgresConn, postgresDBInstance, bookRepository, loanRepository := initializeDatabases(config)
 
 	// Use `WaitGroup` when you just need to wait for tasks to complete without exchanging data.
 	// Use channels when you need to signal task completion and possibly exchange data.
@@ -41,7 +42,7 @@ func main() {
 
 	wg.Wait()
 
-	waitForShutdown(appInstance, postgresConn)
+	waitForShutdown(appInstance, redisConn, postgresConn)
 	log.Info().Msg("Exiting...")
 	logFile.Close()
 	os.Exit(0)
@@ -49,6 +50,7 @@ func main() {
 
 func initializeEnv() *config.EnvConfig {
 	envConfig := config.NewEnvConfig()
+	envConfig.LoadRedisConfig()
 	envConfig.LoadServerConfig()
 	envConfig.LoadOAuth2Config()
 	envConfig.LoadPostgresConfig()
@@ -61,10 +63,12 @@ func initializeEnv() *config.EnvConfig {
 }
 
 func initializeDatabases(config *config.EnvConfig) (
-	*entity.User, repository.RDBMS, *postgres.PostgresDB,
-	pgdb.BookRepository, pgdb.LoanRepository,
+	*entity.User, repository.InMemoryDB, repository.RDBMS,
+	*postgres.PostgresDB, pgdb.BookRepository, pgdb.LoanRepository,
 ) {
 	user := getDummyUserData()
+	redisDB := &redis.RedisDB{}
+	redisConnection := redisDB.ConnectToRedis(config.RedisDBConfig)
 
 	postgresDB := &postgres.PostgresDB{}
 	postgresConnection := postgresDB.ConnectToPostgres(config.PostgresDBConfig)
@@ -75,7 +79,7 @@ func initializeDatabases(config *config.EnvConfig) (
 
 	bookRepository := postgres.NewBookRepository(postgresDBInstance.Dbpool)
 	loanRepository := postgres.NewLoanRepository(postgresDBInstance.Dbpool)
-	return user, postgresConnection, postgresDBInstance, bookRepository, loanRepository
+	return user, redisConnection, postgresConnection, postgresDBInstance, bookRepository, loanRepository
 }
 
 func initializeServer(
@@ -99,7 +103,7 @@ func initializeServer(
 	return appInstance
 }
 
-func waitForShutdown(appInstance *fiber.App, postgresConn repository.RDBMS) {
+func waitForShutdown(appInstance *fiber.App, redisConn repository.InMemoryDB, postgresConn repository.RDBMS) {
 	sigChan := make(chan os.Signal, 1) // Create a channel to listen for OS signals
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	<-sigChan // Block until a signal is received
@@ -113,6 +117,7 @@ func waitForShutdown(appInstance *fiber.App, postgresConn repository.RDBMS) {
 	cancel()
 	log.Info().Msg("app instance has shutdown")
 
+	redisConn.DisconnectFromRedis()
 	postgresConn.DisconnectFromPostgres()
 }
 

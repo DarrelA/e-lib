@@ -1,4 +1,15 @@
 services:
+  redis:
+    image: redis:alpine
+    container_name: redis
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data_${APP_ENV}:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+
   postgres:
     image: postgres:latest
     container_name: e-lib-postgres
@@ -32,6 +43,9 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_started
 
 volumes:
   postgres_data_test:
+  redis_data_test:

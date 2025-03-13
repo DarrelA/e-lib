@@ -6,3 +6,8 @@ type RDBMS interface {
 	ConnectToPostgres(postgresDBConfig *entity.PostgresDBConfig) RDBMS
 	DisconnectFromPostgres()
 }
+
+type InMemoryDB interface {
+	ConnectToRedis(redisDBConfig *entity.RedisDBConfig) InMemoryDB
+	DisconnectFromRedis()
+}
