@@ -15,6 +15,7 @@ const (
 type LoadEnvConfig interface {
 	LoadServerConfig()
 	LoadPostgresConfig()
+	LoadRedisConfig()
 	LoadOAuth2Config()
 }
 
@@ -42,6 +43,12 @@ func (e *EnvConfig) LoadPostgresConfig() {
 		Name:         checkEmptyEnvVar("POSTGRES_DB"),
 		SslMode:      checkEmptyEnvVar("POSTGRES_SSLMODE"),
 		PoolMaxConns: checkEmptyEnvVar("POSTGRES_POOL_MAX_CONNS"),
+	}
+}
+
+func (e *EnvConfig) LoadRedisConfig() {
+	e.RedisDBConfig = &entity.RedisDBConfig{
+		RedisUri: checkEmptyEnvVar("REDIS_URL"),
 	}
 }
 

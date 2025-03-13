@@ -7,6 +7,7 @@ type (
 		PathToSQLSchema     string
 		PathToBooksJsonFile string
 		PostgresDBConfig    *PostgresDBConfig
+		RedisDBConfig       *RedisDBConfig
 		OAuth2Config        *OAuth2Config
 	}
 
@@ -18,6 +19,10 @@ type (
 		Name         string
 		SslMode      string
 		PoolMaxConns string
+	}
+
+	RedisDBConfig struct {
+		RedisUri string
 	}
 
 	OAuth2Config struct {
