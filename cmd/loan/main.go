@@ -33,12 +33,14 @@ func main() {
 	logFile := logger.CreateAppLog(logFilePath)
 	logger.NewZeroLogger(logFile)
 	config := initializeEnv()
-	user, redisConn, postgresConn, postgresDBInstance, bookRepository, loanRepository := initializeDatabases(config)
+	user, redisConn, postgresConn, postgresDBInstance,
+		userRepository, bookRepository, loanRepository := initializeDatabases(config)
 
 	// Use `WaitGroup` when you just need to wait for tasks to complete without exchanging data.
 	// Use channels when you need to signal task completion and possibly exchange data.
 	var wg sync.WaitGroup
-	appInstance := initializeServer(&wg, user, config, postgresDBInstance, bookRepository, loanRepository)
+	appInstance := initializeServer(&wg, user, config, postgresDBInstance,
+		userRepository, bookRepository, loanRepository)
 
 	wg.Wait()
 
@@ -64,7 +66,7 @@ func initializeEnv() *config.EnvConfig {
 
 func initializeDatabases(config *config.EnvConfig) (
 	*entity.User, repository.InMemoryDB, repository.RDBMS,
-	*postgres.PostgresDB, pgdb.BookRepository, pgdb.LoanRepository,
+	*postgres.PostgresDB, pgdb.UserRepository, pgdb.BookRepository, pgdb.LoanRepository,
 ) {
 	user := getDummyUserData()
 	redisDB := &redis.RedisDB{}
@@ -77,14 +79,18 @@ func initializeDatabases(config *config.EnvConfig) (
 	seedRepository := postgres.NewRepository(config, postgresDBInstance.Dbpool, user)
 	seedRepository.SeedBooks()
 
+	userRepository := postgres.NewUserRepository(postgresDBInstance.Dbpool)
 	bookRepository := postgres.NewBookRepository(postgresDBInstance.Dbpool)
 	loanRepository := postgres.NewLoanRepository(postgresDBInstance.Dbpool)
-	return user, redisConnection, postgresConnection, postgresDBInstance, bookRepository, loanRepository
+
+	return user, redisConnection, postgresConnection, postgresDBInstance,
+		userRepository, bookRepository, loanRepository
 }
 
 func initializeServer(
 	wg *sync.WaitGroup, user *entity.User, config *config.EnvConfig,
 	postgresDBInstance *postgres.PostgresDB,
+	userRepository pgdb.UserRepository,
 	bookRepository pgdb.BookRepository,
 	loanRepository pgdb.LoanRepository,
 ) *fiber.App {
@@ -92,9 +98,9 @@ func initializeServer(
 	wg.Add(1)
 	defer wg.Done()
 
+	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config, userRepository)
 	bookService := interfaceSvc.NewBookService(bookRepository)
 	loanService := interfaceSvc.NewLoanService(*user, bookRepository, loanRepository)
-	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config)
 	appInstance := rest.NewRouter(config, googleOAuth2Service, postgresDBInstance, bookService, loanService)
 
 	go func() {

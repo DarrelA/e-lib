@@ -2,10 +2,12 @@ package postgres
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
+	"github.com/DarrelA/e-lib/internal/application/dto"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	repository "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
 	"github.com/jackc/pgx/v5"
@@ -42,28 +44,32 @@ func (ur UserRepository) GetUser(provider string, id string, email string) (int,
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	err := ur.dbpool.QueryRow(ctx, queryGetUserFromAuth, provider, id, email).
-		Scan(&user_id)
+	log.Info().Msgf("GetUser: provider=%s, id=%s, email=%s", provider, id, email)
+
+	err := ur.dbpool.QueryRow(ctx, queryGetUserFromAuth, provider, id, email).Scan(&user_id)
 
 	if err != nil {
 		if err == context.DeadlineExceeded {
-			errMsg := fmt.Sprintf("Timeout occurred while retrieving user profile from database for %s provider.", provider)
+			errMsg := fmt.Sprintf("GetUser: Timeout while retrieving user %s", provider)
 			log.Ctx(ctx).Error().Msg(errMsg)
 			return -1, apperrors.NewInternalServerError(errMsg)
 		}
 
-		if err == pgx.ErrNoRows {
-			return -1, apperrors.NewBadRequestError(errMsgUserNotFound)
+		if errors.Is(err, pgx.ErrNoRows) { // Use errors.Is for accurate error comparison
+			log.Info().Msg("GetUser: No user found")
+			return -1, nil // Return -1 and *nil* error to indicate user not found
 		}
 
-		log.Error().Err(err).Msg("")
-		return -1, apperrors.NewInternalServerError(errMsgUserNotFound)
+		errMsg := "GetUser: Database error retrieving user"
+		log.Error().Err(err).Msg(errMsg)
+		return -1, apperrors.NewInternalServerError(errMsg)
 	}
 
-	return user_id, nil
+	log.Info().Msgf("GetUser: User found with id=%d", user_id)
+	return user_id, nil // return user_id and *nil* for error.
 }
 
-func (ur UserRepository) SaveUser(user *entity.GoogleOAuth2User) (*entity.User, *apperrors.RestErr) {
+func (ur UserRepository) SaveUser(user *dto.GoogleOAuth2UserRes) (*entity.User, *apperrors.RestErr) {
 	newUser := &entity.User{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)

@@ -3,7 +3,7 @@ package entity
 import "time"
 
 type GoogleOAuth2User struct {
-	ID            int64     `json:"id"`
+	ID            string    `json:"id"`
 	UserID        int64     `json:"user_id"`
 	Name          string    `json:"name"`
 	Email         string    `json:"email"`

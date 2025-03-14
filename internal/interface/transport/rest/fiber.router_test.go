@@ -28,6 +28,25 @@ const (
 	user               = "User1"
 )
 
+type mockUserRepository struct{ mock.Mock }
+
+func (m *mockUserRepository) GetUser(provider string, id string, email string) (int, *apperrors.RestErr) {
+	args := m.Called(provider, id, email)
+	user_id, ok := args.Get(0).(int)
+	if !ok {
+		return -1, args.Get(1).(*apperrors.RestErr)
+	}
+	return user_id, nil
+}
+
+func (m *mockUserRepository) SaveUser(user *dto.GoogleOAuth2UserRes) (*entity.User, *apperrors.RestErr) {
+	args := m.Called(user)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(*apperrors.RestErr)
+	}
+	return args.Get(0).(*entity.User), nil
+}
+
 type mockBookRepository struct {
 	mock.Mock
 	ExpectedBook *dto.BookDetail
@@ -101,7 +120,6 @@ func TestRoutes(t *testing.T) {
 	}
 
 	config := initializeEnv()
-	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config)
 
 	config.PostgresDBConfig = &entity.PostgresDBConfig{
 		Username:     "testuser",
@@ -113,6 +131,9 @@ func TestRoutes(t *testing.T) {
 		PoolMaxConns: "10",
 	}
 	postgresDBInstance := &postgres.PostgresDB{}
+
+	mockUserRepo := new(mockUserRepository)
+	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config, mockUserRepo)
 
 	mockBookRepo := new(mockBookRepository)
 	bookService := interfaceSvc.NewBookService(mockBookRepo)

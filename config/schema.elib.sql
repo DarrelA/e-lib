@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS Users(
 
 -- Create the AuthProviders table
 CREATE TABLE IF NOT EXISTS AuthProviders(
-  id PRIMARY KEY,
+  id varchar(45) PRIMARY KEY,
   user_id bigint NOT NULL,
   name varchar(255) NOT NULL,
   email varchar(255) NOT NULL,
