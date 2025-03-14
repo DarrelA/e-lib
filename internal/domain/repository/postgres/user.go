@@ -8,5 +8,5 @@ import (
 
 type UserRepository interface {
 	GetUser(provider string, id string, email string) (int, *apperrors.RestErr)
-	SaveUser(user *dto.GoogleOAuth2UserRes) (*entity.User, *apperrors.RestErr)
+	SaveUser(user *dto.GoogleOAuth2UserRes, provider string) (*entity.User, *apperrors.RestErr)
 }

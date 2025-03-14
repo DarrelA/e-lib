@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS AuthProviders(
   name varchar(255) NOT NULL,
   email varchar(255) NOT NULL,
   verified_email boolean NOT NULL DEFAULT FALSE,
-  provider varchar(45) UNIQUE NOT NULL,
+  provider varchar(45) NOT NULL,
   created_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at timestamp with time zone NOT NULL DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (user_id) REFERENCES Users(id),

@@ -39,7 +39,7 @@ func (m *mockUserRepository) GetUser(provider string, id string, email string) (
 	return user_id, nil
 }
 
-func (m *mockUserRepository) SaveUser(user *dto.GoogleOAuth2UserRes) (*entity.User, *apperrors.RestErr) {
+func (m *mockUserRepository) SaveUser(user *dto.GoogleOAuth2UserRes, provider string) (*entity.User, *apperrors.RestErr) {
 	args := m.Called(user)
 	if args.Get(0) == nil {
 		return nil, args.Get(1).(*apperrors.RestErr)

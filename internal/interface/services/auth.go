@@ -115,7 +115,7 @@ func (oa GoogleOAuth2) SaveUserToRDBMS(user *dto.GoogleOAuth2UserRes) *apperrors
 
 	// No user_id found in User table
 	if user_id == -1 {
-		user, dbErr := oa.userPGDB.SaveUser(user)
+		user, dbErr := oa.userPGDB.SaveUser(user, "google")
 		if dbErr != nil {
 			return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 		}
@@ -123,6 +123,5 @@ func (oa GoogleOAuth2) SaveUserToRDBMS(user *dto.GoogleOAuth2UserRes) *apperrors
 		log.Info().Msgf("User %s has joined the e-Lib!", user.Name)
 	}
 
-	log.Info().Msg("End `SaveUserToRDBMS`")
 	return nil
 }
