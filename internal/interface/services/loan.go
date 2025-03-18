@@ -7,7 +7,7 @@ import (
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	appSvc "github.com/DarrelA/e-lib/internal/application/services"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
-	repository "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
+	"github.com/DarrelA/e-lib/internal/domain/repository"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog/log"
 )

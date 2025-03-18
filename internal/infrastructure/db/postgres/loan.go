@@ -8,7 +8,7 @@ import (
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
-	"github.com/DarrelA/e-lib/internal/domain/repository/postgres"
+	"github.com/DarrelA/e-lib/internal/domain/repository"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -26,7 +26,7 @@ type LoanRepository struct {
 	dbpool *pgxpool.Pool
 }
 
-func NewLoanRepository(dbpool *pgxpool.Pool) postgres.LoanRepository {
+func NewLoanRepository(dbpool *pgxpool.Pool) repository.LoanRepository {
 	return &LoanRepository{dbpool}
 }
 

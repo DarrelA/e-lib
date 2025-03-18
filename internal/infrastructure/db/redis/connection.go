@@ -21,7 +21,7 @@ type RedisDB struct {
 	ctx           context.Context
 }
 
-func (r *RedisDB) ConnectToRedis(redisDBConfig *entity.RedisDBConfig) repository.InMemoryDB {
+func (r *RedisDB) Connect(redisDBConfig *entity.RedisDBConfig) repository.DatabaseConnection {
 	// Create a top level context
 	ctx := context.Background()
 
@@ -37,7 +37,7 @@ func (r *RedisDB) ConnectToRedis(redisDBConfig *entity.RedisDBConfig) repository
 	return &RedisDB{redisDBConfig, redisClient, ctx}
 }
 
-func (r *RedisDB) DisconnectFromRedis() {
+func (r *RedisDB) Disconnect() {
 	if r != nil {
 		_, cancel := context.WithTimeout(r.ctx, 10*time.Second)
 		defer cancel()

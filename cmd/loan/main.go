@@ -15,7 +15,6 @@ import (
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/DarrelA/e-lib/internal/domain/repository"
-	pgdb "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
 	"github.com/DarrelA/e-lib/internal/infrastructure/db/postgres"
 	"github.com/DarrelA/e-lib/internal/infrastructure/db/redis"
 	logger "github.com/DarrelA/e-lib/internal/infrastructure/logger/zerolog"
@@ -65,15 +64,15 @@ func initializeEnv() *config.EnvConfig {
 }
 
 func initializeDatabases(config *config.EnvConfig) (
-	*entity.User, repository.InMemoryDB, repository.RDBMS,
-	*postgres.PostgresDB, pgdb.UserRepository, pgdb.BookRepository, pgdb.LoanRepository,
+	*entity.User, repository.DatabaseConnection, repository.DatabaseConnection,
+	*postgres.PostgresDB, repository.UserRepository, repository.BookRepository, repository.LoanRepository,
 ) {
 	user := getDummyUserData()
 	redisDB := &redis.RedisDB{}
-	redisConnection := redisDB.ConnectToRedis(config.RedisDBConfig)
+	redisConnection := redisDB.Connect(config.RedisDBConfig)
 
 	postgresDB := &postgres.PostgresDB{}
-	postgresConnection := postgresDB.ConnectToPostgres(config.PostgresDBConfig)
+	postgresConnection := postgresDB.Connect(config.PostgresDBConfig)
 	postgresDBInstance := postgresConnection.(*postgres.PostgresDB) // Type assert postgresDB to *postgres.PostgresDB
 
 	seedRepository := postgres.NewRepository(config, postgresDBInstance.Dbpool, user)
@@ -90,9 +89,9 @@ func initializeDatabases(config *config.EnvConfig) (
 func initializeServer(
 	wg *sync.WaitGroup, user *entity.User, config *config.EnvConfig,
 	postgresDBInstance *postgres.PostgresDB,
-	userRepository pgdb.UserRepository,
-	bookRepository pgdb.BookRepository,
-	loanRepository pgdb.LoanRepository,
+	userRepository repository.UserRepository,
+	bookRepository repository.BookRepository,
+	loanRepository repository.LoanRepository,
 ) *fiber.App {
 
 	wg.Add(1)
@@ -109,7 +108,7 @@ func initializeServer(
 	return appInstance
 }
 
-func waitForShutdown(appInstance *fiber.App, redisConn repository.InMemoryDB, postgresConn repository.RDBMS) {
+func waitForShutdown(appInstance *fiber.App, redisConn repository.DatabaseConnection, postgresConn repository.DatabaseConnection) {
 	sigChan := make(chan os.Signal, 1) // Create a channel to listen for OS signals
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 	<-sigChan // Block until a signal is received
@@ -123,8 +122,8 @@ func waitForShutdown(appInstance *fiber.App, redisConn repository.InMemoryDB, po
 	cancel()
 	log.Info().Msg("app instance has shutdown")
 
-	redisConn.DisconnectFromRedis()
-	postgresConn.DisconnectFromPostgres()
+	redisConn.Disconnect()
+	postgresConn.Disconnect()
 }
 
 func getDummyUserData() *entity.User {

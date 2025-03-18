@@ -1,4 +1,4 @@
-package postgres
+package repository
 
 type SeedRepository interface {
 	SeedBooks() error

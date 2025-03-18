@@ -10,7 +10,7 @@ import (
 
 	"github.com/DarrelA/e-lib/config"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
-	"github.com/DarrelA/e-lib/internal/domain/repository/postgres"
+	"github.com/DarrelA/e-lib/internal/domain/repository"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
@@ -47,7 +47,7 @@ type SeedRepository struct {
 	dbpool *pgxpool.Pool
 }
 
-func NewRepository(config *config.EnvConfig, dbpool *pgxpool.Pool, user *entity.User) postgres.SeedRepository {
+func NewRepository(config *config.EnvConfig, dbpool *pgxpool.Pool, user *entity.User) repository.SeedRepository {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 

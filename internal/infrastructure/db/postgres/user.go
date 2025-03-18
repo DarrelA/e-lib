@@ -9,7 +9,7 @@ import (
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
-	repository "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
+	"github.com/DarrelA/e-lib/internal/domain/repository"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"

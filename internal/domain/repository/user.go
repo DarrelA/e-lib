@@ -1,4 +1,4 @@
-package postgres
+package repository
 
 import (
 	"github.com/DarrelA/e-lib/internal/apperrors"

@@ -28,7 +28,7 @@ type PostgresDB struct {
 	Dbpool           *pgxpool.Pool
 }
 
-func (p *PostgresDB) ConnectToPostgres(postgresDBConfig *entity.PostgresDBConfig) repository.RDBMS {
+func (p *PostgresDB) Connect(postgresDBConfig *entity.PostgresDBConfig) repository.DatabaseConnection {
 	connString := fmt.Sprintf(
 		"user=%s password=%s host=%s port=%s dbname=%s sslmode=%s pool_max_conns=%s",
 		postgresDBConfig.Username, postgresDBConfig.Password,
@@ -55,7 +55,7 @@ func (p *PostgresDB) ConnectToPostgres(postgresDBConfig *entity.PostgresDBConfig
 	return &PostgresDB{PostgresDBConfig: postgresDBConfig, Dbpool: dbpool}
 }
 
-func (p *PostgresDB) DisconnectFromPostgres() {
+func (p *PostgresDB) Disconnect() {
 	if p.Dbpool != nil {
 		p.Dbpool.Close()
 		log.Info().Msg("PostgreSQL database connection closed")
