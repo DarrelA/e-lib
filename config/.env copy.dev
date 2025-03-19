@@ -1,6 +1,7 @@
 # Server
 APP_ENV=dev
 APP_PORT=3000
+LOG_LEVEL=debug
 
 # Postgres
 POSTGRES_USER=

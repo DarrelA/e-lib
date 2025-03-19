@@ -51,10 +51,11 @@ func main() {
 
 func initializeEnv() *config.EnvConfig {
 	envConfig := config.NewEnvConfig()
-	envConfig.LoadRedisConfig()
 	envConfig.LoadServerConfig()
-	envConfig.LoadOAuth2Config()
+	envConfig.LoadLogConfig()
 	envConfig.LoadPostgresConfig()
+	envConfig.LoadRedisConfig()
+	envConfig.LoadOAuth2Config()
 	config, ok := envConfig.(*config.EnvConfig)
 	if !ok {
 		log.Error().Msg("failed to load environment configuration")

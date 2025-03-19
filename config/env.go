@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/DarrelA/e-lib/internal/domain/entity"
+	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
 
@@ -14,6 +15,7 @@ const (
 
 type LoadEnvConfig interface {
 	LoadServerConfig()
+	LoadLogConfig()
 	LoadPostgresConfig()
 	LoadRedisConfig()
 	LoadOAuth2Config()
@@ -32,6 +34,39 @@ func (e *EnvConfig) LoadServerConfig() {
 	e.Port = checkEmptyEnvVar("APP_PORT")
 	e.PathToSQLSchema = "./config/schema.elib.sql"
 	e.PathToBooksJsonFile = "./testdata/json/" + e.AppEnv + ".books.json"
+}
+
+func (e *EnvConfig) LoadLogConfig() {
+	logLevel := strings.ToLower(os.Getenv("LOG_LEVEL"))
+	if logLevel != "trace" && logLevel != "debug" &&
+		logLevel != "info" && logLevel != "warn" &&
+		logLevel != "error" && logLevel != "fatal" &&
+		logLevel != "panic" {
+		log.Error().Msgf("LOG_LEVEL is set to [%s]; only 'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic' are accepted", logLevel)
+	}
+
+	// Whichever level is chosen,
+	// all logs with a level greater than or equal to that level will be written.
+	switch logLevel {
+	case "trace":
+		zerolog.SetGlobalLevel(zerolog.TraceLevel) // Level -1
+	case "debug":
+		zerolog.SetGlobalLevel(zerolog.DebugLevel) // Level 0
+	case "info":
+		zerolog.SetGlobalLevel(zerolog.InfoLevel) // Level 1
+	case "warn":
+		zerolog.SetGlobalLevel(zerolog.WarnLevel) // Level 2
+	case "error":
+		zerolog.SetGlobalLevel(zerolog.ErrorLevel) // Level 3
+	case "fatal":
+		zerolog.SetGlobalLevel(zerolog.FatalLevel) // Level 4
+	case "panic":
+		zerolog.SetGlobalLevel(zerolog.PanicLevel) // Level 5
+	default:
+		zerolog.SetGlobalLevel(zerolog.InfoLevel) // Level 1
+	}
+
+	log.Info().Msgf("logLevel is set to [%s] in the [%s] env", logLevel, e.AppEnv)
 }
 
 func (e *EnvConfig) LoadPostgresConfig() {
