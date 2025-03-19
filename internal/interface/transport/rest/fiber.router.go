@@ -12,15 +12,11 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	errMsgStartServerFailure = "failed to start server"
-)
-
 func StartServer(app *fiber.App, port string) {
 	log.Info().Msg("listening at port: " + port)
 	err := app.Listen(":" + port)
 	if err != nil {
-		log.Error().Err(err).Msg(errMsgStartServerFailure)
+		log.Error().Err(err).Msg("failed to start server")
 	}
 }
 

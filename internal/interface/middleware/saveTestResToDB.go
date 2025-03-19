@@ -24,7 +24,7 @@ func SaveTestResToDB(c *fiber.Ctx) error {
 	statusCode := c.Response().StatusCode()
 	reqUrlQueryString, ok := c.Locals("bookTitleKey").(dto.BookRequest)
 	if !ok {
-		err := apperrors.NewInternalServerError("bookTitleKey not found or has incorrect type.")
+		err := apperrors.NewInternalServerError("bookTitleKey not found or has incorrect type")
 		log.Error().Err(err).Msg("")
 		return c.Status(err.Status).JSON(err)
 	}

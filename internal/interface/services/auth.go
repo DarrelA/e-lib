@@ -21,7 +21,8 @@ import (
 const (
 	googleUserInfoEndpoint = "https://www.googleapis.com/oauth2/v2/userinfo?access_token="
 
-	errMsgPleaseLoginAgain = "please login again."
+	errMsgPleaseLoginAgain = "please login again"
+	errMsgGoogleOAuth2     = "google oauth2 error"
 )
 
 type GoogleOAuth2 struct {
@@ -65,14 +66,14 @@ func (oa GoogleOAuth2) Callback(c *fiber.Ctx) error {
 
 	resp, err := http.Get(googleUserInfoEndpoint + token.AccessToken)
 	if err != nil {
-		log.Error().Err(err).Msg("google oauth2 error")
+		log.Error().Err(err).Msg(errMsgGoogleOAuth2)
 		err := apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 		return c.Status(err.Status).JSON(err)
 	}
 
 	userInfo, err := io.ReadAll(resp.Body)
 	if err != nil {
-		log.Error().Err(err).Msg("google oauth2 error")
+		log.Error().Err(err).Msg(errMsgGoogleOAuth2)
 		err := apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 		return c.Status(err.Status).JSON(err)
 	}
@@ -96,7 +97,7 @@ func (oa GoogleOAuth2) Callback(c *fiber.Ctx) error {
 		libUserID = newLibUserID
 
 		if dbErr != nil {
-			log.Error().Err(dbErr).Msg("Error saving user to RDBMS in goroutine")
+			log.Error().Err(dbErr).Msg("failed to save user into RDBMS in goroutine")
 			dbErrFromGoroutine = dbErr // Copy the error to the shared variable!
 		}
 	}()
@@ -104,7 +105,7 @@ func (oa GoogleOAuth2) Callback(c *fiber.Ctx) error {
 	wg.Wait()
 
 	if dbErrFromGoroutine != nil {
-		log.Error().Err(dbErrFromGoroutine).Msg("Error saving user to RDBMS after waitgroup")
+		log.Error().Err(dbErrFromGoroutine).Msg("failed to save user into RDBMS after waitgroup")
 		return c.Status(fiber.StatusInternalServerError).JSON(dbErrFromGoroutine)
 	}
 
@@ -140,7 +141,7 @@ func (oa GoogleOAuth2) SaveUserToRDBMS(user *dto.GoogleOAuth2UserRes) (int64, *a
 			return -1, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 		}
 
-		log.Info().Msgf("User %s has joined the e-Lib using %s!", libUser.Name, libUser.Email)
+		log.Info().Msgf("user %s has joined the e-Lib using %s!", libUser.Name, libUser.Email)
 	}
 
 	return libUser.ID, nil

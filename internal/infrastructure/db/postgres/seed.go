@@ -19,27 +19,6 @@ import (
 const (
 	pathToSQLTestSchema              = "./config/test.schema.api_testing.sql"
 	pathToCompareTestReqAndResReport = "/root/testdata/reports/it_report.json"
-
-	errMsgUnableReadSchema         = "unable to read %s"
-	errMsgUnableToExecuteSQLScript = "unable to execute sql script"
-	errMsgUnableToLoadJSONFile     = "unable to load [%s]"
-
-	errMsgTransactionError = "error starting transaction: %w"
-	errMsgInsertBooks      = "error inserting book '%s': %w"
-)
-
-const (
-	insertDummyUser = `
-		INSERT INTO users (name, email, created_at, updated_at)
-		VALUES ($1, $2, NOW(), NOW())
-		ON CONFLICT (email) DO NOTHING;  -- Skip duplicates based on email
-	`
-
-	insertBooksStmt = `
-		INSERT INTO Books (uuid, title, available_copies, created_at, updated_at)
-		VALUES (gen_random_uuid(), lower($1), $2, NOW(), NOW())
-		ON CONFLICT (title) DO NOTHING;  -- Skip duplicates based on title
-	`
 )
 
 type SeedRepository struct {
@@ -66,9 +45,14 @@ func NewRepository(config *config.EnvConfig, dbpool *pgxpool.Pool, user *entity.
 
 	log.Info().Msgf("successfully created the tables using %s", config.PathToSQLSchema)
 
+	const insertDummyUser = `
+		INSERT INTO users (name, email, created_at, updated_at)
+		VALUES ($1, $2, NOW(), NOW())
+		ON CONFLICT (email) DO NOTHING;  -- Skip duplicates based on email
+	`
 	_, err := dbpool.Exec(ctx, insertDummyUser, user.Name, user.Email)
 	if err != nil {
-		log.Error().Err(err).Msg("Error inserting dummy user")
+		log.Error().Err(err).Msg("error inserting dummy user")
 		dbpool.Close()
 		return nil
 	}
@@ -80,12 +64,12 @@ func NewRepository(config *config.EnvConfig, dbpool *pgxpool.Pool, user *entity.
 func executeSchema(ctx context.Context, dbpool *pgxpool.Pool, schemaPath string) error {
 	sqlData, err := os.ReadFile(schemaPath)
 	if err != nil {
-		log.Error().Err(err).Msgf(errMsgUnableReadSchema, schemaPath)
+		log.Error().Err(err).Msgf("unable to read %s", schemaPath)
 		return err
 	}
 	_, err = dbpool.Exec(ctx, string(sqlData))
 	if err != nil {
-		log.Error().Err(err).Msg(errMsgUnableToExecuteSQLScript)
+		log.Error().Err(err).Msg("unable to execute sql script")
 		return err
 	}
 	return nil
@@ -94,14 +78,14 @@ func executeSchema(ctx context.Context, dbpool *pgxpool.Pool, schemaPath string)
 func (sr SeedRepository) SeedBooks() error {
 	content, err := os.ReadFile(sr.config.PathToBooksJsonFile)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to read books JSON file")
+		log.Error().Err(err).Msg("failed to read books JSON file")
 		return err
 	}
 
 	var books []*entity.Book
 	err = json.Unmarshal(content, &books)
 	if err != nil {
-		log.Error().Err(err).Msg("Failed to unmarshal books JSON")
+		log.Error().Err(err).Msg("failed to unmarshal books JSON")
 		return err
 	}
 
@@ -109,15 +93,20 @@ func (sr SeedRepository) SeedBooks() error {
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
 
+		const insertBooksStmt = `
+			INSERT INTO Books (uuid, title, available_copies, created_at, updated_at)
+			VALUES (gen_random_uuid(), lower($1), $2, NOW(), NOW())
+			ON CONFLICT (title) DO NOTHING;  -- Skip duplicates based on title
+		`
 		for _, book := range books {
 			_, err := tx.Exec(ctx, insertBooksStmt, strings.ToLower(book.Title), book.AvailableCopies)
 			if err != nil {
-				log.Error().Err(err).Msg(errMsgInsertBooks)
-				return fmt.Errorf(errMsgInsertBooks, book.Title, err)
+				log.Error().Err(err).Msg(fmt.Sprintf("error inserting book '%s'", book.Title))
+				return fmt.Errorf("error inserting book '%s': %w", book.Title, err)
 			}
 		}
 
-		log.Info().Msgf("Books seeded successfully using %s.", sr.config.PathToBooksJsonFile)
+		log.Info().Msgf("books seeded successfully using %s", sr.config.PathToBooksJsonFile)
 		return nil
 	})
 	if err != nil {
@@ -135,24 +124,24 @@ func (sr SeedRepository) executeTransaction(txFunc TxFunc) error {
 
 	tx, err := sr.dbpool.Begin(ctx)
 	if err != nil {
-		log.Error().Err(err).Msg(errMsgTransactionError)
-		return fmt.Errorf(errMsgTransactionError, err)
+		log.Error().Err(err).Msg(errMsgFailedToBeginTransaction)
+		return fmt.Errorf(errMsgFailedToBeginTransaction+": %w", err)
 	}
 
 	defer func() {
 		if p := recover(); p != nil {
-			log.Error().Interface("panic", p).Msg("Panic occurred during transaction") // Log the panic
+			log.Error().Interface("panic", p).Msg("panic occurred during transaction") // Log the panic
 			if rbErr := tx.Rollback(ctx); rbErr != nil {
-				log.Error().Err(rbErr).Msg("Failed to rollback transaction after panic")
+				log.Error().Err(rbErr).Msg(errMsgFailedToRollbackTransaction)
 			}
 		} else if err != nil {
 			if rbErr := tx.Rollback(ctx); rbErr != nil {
-				log.Error().Err(rbErr).Msg("Failed to rollback transaction")
+				log.Error().Err(rbErr).Msg(errMsgFailedToRollbackTransaction)
 			}
 		} else {
 			err = tx.Commit(ctx)
 			if err != nil {
-				log.Error().Err(err).Msg("Failed to commit transaction")
+				log.Error().Err(err).Msg(errMsgFailedToCommitTransaction)
 			}
 		}
 	}()

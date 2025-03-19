@@ -13,10 +13,7 @@ import (
 )
 
 const (
-	warnMsgOutOfStock        = "Book '%s' is out of stock."
-	errMsgInvalidRequestBody = "Invalid request Body"
-	errMsgOnlyOneCopy        = "Each user can only borrow one copy per book."
-	errMsgAlreadyReturned    = "You have already returned the book."
+	warnMsgOutOfStock = "book '%s' is out of stock"
 )
 
 type LoanService struct {
@@ -33,12 +30,12 @@ func NewLoanService(
 func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
 	borrowBook, ok := c.Locals("bookTitleKey").(dto.BookRequest)
 	if !ok {
-		log.Error().Msg("bookTitleKey not found or has incorrect type.")
+		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "bookTitleKey")
 	}
 
 	requestId, ok := c.Locals("requestid").(string)
 	if !ok {
-		log.Error().Msg("requestid not found or has incorrect type.")
+		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "requestid")
 	}
 
 	loanDetail, err := ls.BorrowBook(requestId, borrowBook)
@@ -51,7 +48,8 @@ func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
 func (ls *LoanService) BorrowBook(requestId string, bookRequest dto.BookRequest) (*dto.LoanDetail, *apperrors.RestErr) {
 	bookDetail, restErr := ls.bookPGDB.GetBook(requestId, bookRequest.Title)
 	if restErr != nil {
-		log.Error().Err(restErr).Msgf("")
+		log.Warn().Msg(errMsgBookNotFound + ":" + restErr.Message)
+		restErr.Message = errMsgBookNotFound
 		return nil, restErr
 	}
 
@@ -71,12 +69,12 @@ func (ls *LoanService) BorrowBook(requestId string, bookRequest dto.BookRequest)
 func (ls *LoanService) ExtendBookLoanHandler(c *fiber.Ctx) error {
 	borrowBook, ok := c.Locals("bookTitleKey").(dto.BookRequest)
 	if !ok {
-		log.Error().Msg("bookTitleKey not found or has incorrect type.")
+		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "bookTitleKey")
 	}
 
 	requestId, ok := c.Locals("requestid").(string)
 	if !ok {
-		log.Error().Msg("requestid not found or has incorrect type.")
+		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "requestid")
 	}
 
 	loanDetail, err := ls.ExtendBookLoan(requestId, borrowBook)
@@ -105,12 +103,12 @@ func (ls *LoanService) ExtendBookLoan(requestId string, bookRequest dto.BookRequ
 func (ls *LoanService) ReturnBookHandler(c *fiber.Ctx) error {
 	borrowBook, ok := c.Locals("bookTitleKey").(dto.BookRequest)
 	if !ok {
-		log.Error().Msg("bookTitleKey not found or has incorrect type.")
+		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "bookTitleKey")
 	}
 
 	requestId, ok := c.Locals("requestid").(string)
 	if !ok {
-		log.Error().Msg("requestid not found or has incorrect type.")
+		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "requestid")
 	}
 
 	err := ls.ReturnBook(requestId, borrowBook)

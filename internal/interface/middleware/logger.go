@@ -12,7 +12,7 @@ import (
 func Logger(c *fiber.Ctx) error {
 	appEnv, ok := c.Locals("appEnv").(string)
 	if !ok {
-		err := apperrors.NewInternalServerError("appEnv not found or has incorrect type.")
+		err := apperrors.NewInternalServerError("appEnv not found or has incorrect type")
 		log.Error().Err(err).Msg("")
 		return c.Status(err.Status).JSON(err)
 	}

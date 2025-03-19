@@ -20,8 +20,8 @@ const (
 	booksJsonFilePath = "./internal/infrastructure/db/filedb/books.json"
 	loansJsonFilePath = "./internal/infrastructure/db/filedb/loans.json"
 
-	errMsgLoanDetailNotFound = "Loan detail not found."
-	errMsgFailedToSaveLoan   = "Failed to save loan details."
+	errMsgLoanDetailNotFound = "loan detail not found"
+	errMsgFailedToSaveLoan   = "failed to save loan details"
 )
 
 var (

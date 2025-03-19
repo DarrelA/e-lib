@@ -10,8 +10,8 @@ import (
 )
 
 const (
-	errMsgEmptyTitle   = "User did not provide title."
-	errMsgBookNotFound = "Book not found."
+	errMsgNotFoundOrIncorrectType = "%s not found or has incorrect type"
+	errMsgBookNotFound            = "book not found"
 )
 
 type BookService struct {
@@ -25,12 +25,12 @@ func NewBookService(bookPGDB repository.BookRepository) appSvc.BookService {
 func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 	bookRequest, ok := c.Locals("bookTitleKey").(dto.BookRequest)
 	if !ok {
-		log.Error().Msg("bookTitleKey not found or has incorrect type.")
+		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "bookTitleKey")
 	}
 
 	requestId, ok := c.Locals("requestid").(string)
 	if !ok {
-		log.Error().Msg("requestid not found or has incorrect type.")
+		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "requestid")
 	}
 
 	bookDetail, err := bs.GetBookByTitle(requestId, bookRequest)

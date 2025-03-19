@@ -44,7 +44,7 @@ func main() {
 	wg.Wait()
 
 	waitForShutdown(appInstance, redisConn, postgresConn)
-	log.Info().Msg("Exiting...")
+	log.Info().Msg("exiting...")
 	logFile.Close()
 	os.Exit(0)
 }

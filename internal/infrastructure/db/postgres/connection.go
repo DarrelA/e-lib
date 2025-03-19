@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/DarrelA/e-lib/internal/domain/repository"
@@ -11,8 +12,16 @@ import (
 )
 
 const (
+	errMsgContextTimeout         = "context timeout occurred"
 	errMsgCreatingConnectionPool = "unable to create connection pool"
 	errMsgGreetingQuery          = "dbpool.QueryRow failed"
+
+	errMsgFailedToBeginTransaction    = "failed to begin transaction"
+	errMsgFailedToRollbackTransaction = "failed to rollback transaction"
+	errMsgFailedToCommitTransaction   = "failed to commit transaction"
+
+	infoMsgRollbackTransactionSuccess  = "transaction rollback successfully"
+	infoMsgCommittedTransactionSuccess = "transaction committed successfully"
 )
 
 /*
@@ -24,8 +33,9 @@ pgxpool implements a nearly identical interface to pgx connections.
 - This pattern is useful for managing resources that have a lifecycle, like database connections.
 */
 type PostgresDB struct {
-	PostgresDBConfig *entity.PostgresDBConfig
-	Dbpool           *pgxpool.Pool
+	Dbpool *pgxpool.Pool
+
+	postgresDBConfig *entity.PostgresDBConfig
 }
 
 func (p *PostgresDB) Connect(postgresDBConfig *entity.PostgresDBConfig) repository.DatabaseConnection {
@@ -37,22 +47,33 @@ func (p *PostgresDB) Connect(postgresDBConfig *entity.PostgresDBConfig) reposito
 		postgresDBConfig.PoolMaxConns,
 	)
 
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
 	var err error
-	dbpool, err := pgxpool.New(context.Background(), connString)
+	dbpool, err := pgxpool.New(ctx, connString)
 	if err != nil {
+		if err == context.DeadlineExceeded {
+			log.Ctx(ctx).Error().Err(err).Msg(errMsgContextTimeout)
+		}
+
 		log.Error().Err(err).Msg(errMsgCreatingConnectionPool)
 		panic(err)
 	}
 
 	var greeting string
-	err = dbpool.QueryRow(context.Background(), "select 'Hello, world!'").Scan(&greeting)
+	err = dbpool.QueryRow(ctx, "select 'Hello, world!'").Scan(&greeting)
 	if err != nil {
+		if err == context.DeadlineExceeded {
+			log.Ctx(ctx).Error().Err(err).Msg(errMsgContextTimeout)
+		}
+
 		log.Error().Err(err).Msg(errMsgGreetingQuery)
 		panic(err)
 	}
 
 	log.Info().Msg("successfully connected to the Postgres database")
-	return &PostgresDB{PostgresDBConfig: postgresDBConfig, Dbpool: dbpool}
+	return &PostgresDB{Dbpool: dbpool, postgresDBConfig: postgresDBConfig}
 }
 
 func (p *PostgresDB) Disconnect() {
