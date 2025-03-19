@@ -110,7 +110,8 @@ docker exec -it <your_container_id> psql -U <your_username> -d elib
 - [x] Implement logging for API requests and responses.
 - [x] Add validation for each API (e.g., missing or invalid input).
 - [x] Write tests for coverage and regression.
-- [ ] Integrate Google OAuth2 for user authentication.
+- [x] Integrate Google OAuth2 for user authentication.
+- [x] Implement session management with Redis.
 
 <p align="right">(<a href="#readme-top">back to top</a>)</p>
 
@@ -128,4 +129,5 @@ docker exec -it <your_container_id> psql -U <your_username> -d elib
 |        [zerolog](https://github.com/rs/zerolog)         |                Zero-allocation JSON logger for Go                 |
 |     [testify](https://github.com/stretchr/testify)      |                        Go testing toolkit                         |
 | [validator](https://github.com/go-playground/validator) | Value validations for structs and individual fields based on tags |
+|       [redis](https://github.com/redis/go-redis)        |      Golang Redis client for Redis Server and Redis Cluster       |
 |        [dbdiagram.io](https://dbdiagram.io/home)        |              A free, simple tool to draw ER diagrams              |

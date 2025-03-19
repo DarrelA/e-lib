@@ -33,13 +33,13 @@ func main() {
 	logger.NewZeroLogger(logFile)
 	config := initializeEnv()
 	user, redisConn, postgresConn, postgresDBInstance,
-		userRepository, bookRepository, loanRepository := initializeDatabases(config)
+		userRepository, bookRepository, loanRepository, sessionRedis := initializeDatabases(config)
 
 	// Use `WaitGroup` when you just need to wait for tasks to complete without exchanging data.
 	// Use channels when you need to signal task completion and possibly exchange data.
 	var wg sync.WaitGroup
 	appInstance := initializeServer(&wg, user, config, postgresDBInstance,
-		userRepository, bookRepository, loanRepository)
+		userRepository, bookRepository, loanRepository, sessionRedis)
 
 	wg.Wait()
 
@@ -65,11 +65,9 @@ func initializeEnv() *config.EnvConfig {
 
 func initializeDatabases(config *config.EnvConfig) (
 	*entity.User, repository.DatabaseConnection, repository.DatabaseConnection,
-	*postgres.PostgresDB, repository.UserRepository, repository.BookRepository, repository.LoanRepository,
+	*postgres.PostgresDB, repository.UserRepository, repository.BookRepository, repository.LoanRepository, repository.SessionRepository,
 ) {
 	user := getDummyUserData()
-	redisDB := &redis.RedisDB{}
-	redisConnection := redisDB.Connect(config.RedisDBConfig)
 
 	postgresDB := &postgres.PostgresDB{}
 	postgresConnection := postgresDB.Connect(config.PostgresDBConfig)
@@ -82,8 +80,13 @@ func initializeDatabases(config *config.EnvConfig) (
 	bookRepository := postgres.NewBookRepository(postgresDBInstance.Dbpool)
 	loanRepository := postgres.NewLoanRepository(postgresDBInstance.Dbpool)
 
+	redisDB := &redis.RedisDB{}
+	redisConnection := redisDB.Connect(config.RedisDBConfig)
+	redisDBInstance := redisConnection.(*redis.RedisDB)
+	sessionRedis := redis.NewSessionRepository(redisDBInstance.RedisClient)
+
 	return user, redisConnection, postgresConnection, postgresDBInstance,
-		userRepository, bookRepository, loanRepository
+		userRepository, bookRepository, loanRepository, sessionRedis
 }
 
 func initializeServer(
@@ -92,12 +95,13 @@ func initializeServer(
 	userRepository repository.UserRepository,
 	bookRepository repository.BookRepository,
 	loanRepository repository.LoanRepository,
+	sessionRedis repository.SessionRepository,
 ) *fiber.App {
 
 	wg.Add(1)
 	defer wg.Done()
 
-	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config, userRepository)
+	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config, userRepository, sessionRedis)
 	bookService := interfaceSvc.NewBookService(bookRepository)
 	loanService := interfaceSvc.NewLoanService(*user, bookRepository, loanRepository)
 	appInstance := rest.NewRouter(config, googleOAuth2Service, postgresDBInstance, bookService, loanService)

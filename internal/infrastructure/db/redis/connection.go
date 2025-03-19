@@ -17,11 +17,11 @@ const (
 
 type RedisDB struct {
 	redisDBConfig *entity.RedisDBConfig
-	redisClient   *redis.Client
+	RedisClient   *redis.Client
 	ctx           context.Context
 }
 
-func (r *RedisDB) Connect(redisDBConfig *entity.RedisDBConfig) repository.DatabaseConnection {
+func (r RedisDB) Connect(redisDBConfig *entity.RedisDBConfig) repository.DatabaseConnection {
 	// Create a top level context
 	ctx := context.Background()
 
@@ -32,9 +32,8 @@ func (r *RedisDB) Connect(redisDBConfig *entity.RedisDBConfig) repository.Databa
 		log.Error().Err(err).Msg(errMsgConnectingToDB)
 		panic(err)
 	}
-
 	log.Info().Msg("successfully connected to the Redis database")
-	return &RedisDB{redisDBConfig, redisClient, ctx}
+	return &RedisDB{redisDBConfig: redisDBConfig, RedisClient: redisClient, ctx: ctx}
 }
 
 func (r *RedisDB) Disconnect() {
@@ -42,7 +41,7 @@ func (r *RedisDB) Disconnect() {
 		_, cancel := context.WithTimeout(r.ctx, 10*time.Second)
 		defer cancel()
 
-		err := r.redisClient.Close()
+		err := r.RedisClient.Close()
 		if err != nil {
 			log.Error().Err(err).Msg(errMsgDisconnectingFromDB)
 		} else {

@@ -9,5 +9,5 @@ import (
 type GoogleOAuth2Service interface {
 	Login(c *fiber.Ctx) error
 	Callback(c *fiber.Ctx) error
-	SaveUserToRDBMS(user *dto.GoogleOAuth2UserRes) *apperrors.RestErr
+	SaveUserToRDBMS(user *dto.GoogleOAuth2UserRes) (int64, *apperrors.RestErr)
 }

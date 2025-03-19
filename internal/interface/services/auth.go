@@ -11,7 +11,7 @@ import (
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	"github.com/DarrelA/e-lib/internal/application/services"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
-	repository "github.com/DarrelA/e-lib/internal/domain/repository/postgres"
+	"github.com/DarrelA/e-lib/internal/domain/repository"
 	"github.com/gofiber/fiber/v2"
 	"github.com/rs/zerolog/log"
 	"golang.org/x/oauth2"
@@ -27,10 +27,11 @@ const (
 type GoogleOAuth2 struct {
 	googleLoginConfig oauth2.Config
 	userPGDB          repository.UserRepository
+	sessionRedis      repository.SessionRepository
 }
 
-func NewGoogleOAuth2(
-	OAuth2Config *entity.OAuth2Config, userPGDB repository.UserRepository,
+func NewGoogleOAuth2(OAuth2Config *entity.OAuth2Config,
+	userPGDB repository.UserRepository, sessionRedis repository.SessionRepository,
 ) services.GoogleOAuth2Service {
 	googleLoginConfig := oauth2.Config{
 		RedirectURL:  OAuth2Config.GoogleRedirectURL,
@@ -40,7 +41,7 @@ func NewGoogleOAuth2(
 		Endpoint:     google.Endpoint,
 	}
 
-	return &GoogleOAuth2{googleLoginConfig, userPGDB}
+	return &GoogleOAuth2{googleLoginConfig, userPGDB, sessionRedis}
 }
 
 func (oa GoogleOAuth2) Login(c *fiber.Ctx) error {
@@ -87,10 +88,13 @@ func (oa GoogleOAuth2) Callback(c *fiber.Ctx) error {
 	wg.Add(1) // Increment the counter
 
 	var dbErrFromGoroutine *apperrors.RestErr
+	var libUserID int64
 
 	go func() {
 		defer wg.Done() // Decrement the counter when the goroutine finishes
-		dbErr := oa.SaveUserToRDBMS(user)
+		newLibUserID, dbErr := oa.SaveUserToRDBMS(user)
+		libUserID = newLibUserID
+
 		if dbErr != nil {
 			log.Error().Err(dbErr).Msg("Error saving user to RDBMS in goroutine")
 			dbErrFromGoroutine = dbErr // Copy the error to the shared variable!
@@ -104,24 +108,40 @@ func (oa GoogleOAuth2) Callback(c *fiber.Ctx) error {
 		return c.Status(fiber.StatusInternalServerError).JSON(dbErrFromGoroutine)
 	}
 
+	sessionID, sessionErr := oa.sessionRedis.NewSession(libUserID)
+	if sessionErr != nil {
+		return sessionErr
+	}
+
+	cookie := fiber.Cookie{
+		Name:     "session_id",
+		Value:    sessionID,
+		HTTPOnly: true,
+		Secure:   true,
+		SameSite: "Strict",
+	}
+	c.Cookie(&cookie)
+
 	return c.Status(fiber.StatusOK).JSON(fiber.Map{"user": user})
 }
 
-func (oa GoogleOAuth2) SaveUserToRDBMS(user *dto.GoogleOAuth2UserRes) *apperrors.RestErr {
+func (oa GoogleOAuth2) SaveUserToRDBMS(user *dto.GoogleOAuth2UserRes) (int64, *apperrors.RestErr) {
 	user_id, dbErr := oa.userPGDB.GetUser("google", user.ID, user.Email)
 	if dbErr != nil {
-		return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		return -1, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
+
+	libUser := &entity.User{ID: int64(user_id)}
 
 	// No user_id found in User table
 	if user_id == -1 {
-		user, dbErr := oa.userPGDB.SaveUser(user, "google")
+		libUser, dbErr = oa.userPGDB.SaveUser(user, "google")
 		if dbErr != nil {
-			return apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+			return -1, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 		}
 
-		log.Info().Msgf("User %s has joined the e-Lib!", user.Name)
+		log.Info().Msgf("User %s has joined the e-Lib using %s!", libUser.Name, libUser.Email)
 	}
 
-	return nil
+	return libUser.ID, nil
 }

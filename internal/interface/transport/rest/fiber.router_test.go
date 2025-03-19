@@ -28,6 +28,16 @@ const (
 	user               = "User1"
 )
 
+type mockSessionRepository struct{ mock.Mock }
+
+func (m *mockSessionRepository) NewSession(userID int64) (string, *apperrors.RestErr) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return "", args.Get(1).(*apperrors.RestErr)
+	}
+	return args.Get(0).(string), nil
+}
+
 type mockUserRepository struct{ mock.Mock }
 
 func (m *mockUserRepository) GetUser(provider string, id string, email string) (int, *apperrors.RestErr) {
@@ -133,7 +143,8 @@ func TestRoutes(t *testing.T) {
 	postgresDBInstance := &postgres.PostgresDB{}
 
 	mockUserRepo := new(mockUserRepository)
-	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config, mockUserRepo)
+	mockSessionRepo := new(mockSessionRepository)
+	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config, mockUserRepo, mockSessionRepo)
 
 	mockBookRepo := new(mockBookRepository)
 	bookService := interfaceSvc.NewBookService(mockBookRepo)
