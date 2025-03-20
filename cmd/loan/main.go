@@ -2,9 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
-	"io"
-	"net/http"
 	"os"
 	"os/signal"
 	"sync"
@@ -13,6 +10,7 @@ import (
 
 	"github.com/DarrelA/e-lib/config"
 	"github.com/DarrelA/e-lib/internal/apperrors"
+	"github.com/DarrelA/e-lib/internal/application/dto"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
 	"github.com/DarrelA/e-lib/internal/domain/repository"
 	"github.com/DarrelA/e-lib/internal/infrastructure/db/postgres"
@@ -32,14 +30,14 @@ func main() {
 	logFile := logger.CreateAppLog(logFilePath)
 	logger.NewZeroLogger(logFile)
 	config := initializeEnv()
-	user, redisConn, postgresConn, postgresDBInstance,
-		userRepository, bookRepository, loanRepository, sessionRedis := initializeDatabases(config)
+	redisConn, postgresConn, postgresDBInstance,
+		userRepository, bookRepository, loanRepository, sessionRepository := initializeDatabases(config)
 
 	// Use `WaitGroup` when you just need to wait for tasks to complete without exchanging data.
 	// Use channels when you need to signal task completion and possibly exchange data.
 	var wg sync.WaitGroup
-	appInstance := initializeServer(&wg, user, config, postgresDBInstance,
-		userRepository, bookRepository, loanRepository, sessionRedis)
+	appInstance := initializeServer(&wg, config, postgresDBInstance,
+		userRepository, bookRepository, loanRepository, sessionRepository)
 
 	wg.Wait()
 
@@ -65,16 +63,14 @@ func initializeEnv() *config.EnvConfig {
 }
 
 func initializeDatabases(config *config.EnvConfig) (
-	*entity.User, repository.DatabaseConnection, repository.DatabaseConnection,
+	repository.DatabaseConnection, repository.DatabaseConnection,
 	*postgres.PostgresDB, repository.UserRepository, repository.BookRepository, repository.LoanRepository, repository.SessionRepository,
 ) {
-	user := getDummyUserData()
-
 	postgresDB := &postgres.PostgresDB{}
 	postgresConnection := postgresDB.Connect(config.PostgresDBConfig)
 	postgresDBInstance := postgresConnection.(*postgres.PostgresDB) // Type assert postgresDB to *postgres.PostgresDB
 
-	seedRepository := postgres.NewRepository(config, postgresDBInstance.Dbpool, user)
+	seedRepository := postgres.NewRepository(config, postgresDBInstance.Dbpool)
 	seedRepository.SeedBooks()
 
 	userRepository := postgres.NewUserRepository(postgresDBInstance.Dbpool)
@@ -84,28 +80,41 @@ func initializeDatabases(config *config.EnvConfig) (
 	redisDB := &redis.RedisDB{}
 	redisConnection := redisDB.Connect(config.RedisDBConfig)
 	redisDBInstance := redisConnection.(*redis.RedisDB)
-	sessionRedis := redis.NewSessionRepository(redisDBInstance.RedisClient)
+	sessionRepository := redis.NewSessionRepository(redisDBInstance.RedisClient)
 
-	return user, redisConnection, postgresConnection, postgresDBInstance,
-		userRepository, bookRepository, loanRepository, sessionRedis
+	return redisConnection, postgresConnection, postgresDBInstance,
+		userRepository, bookRepository, loanRepository, sessionRepository
 }
 
 func initializeServer(
-	wg *sync.WaitGroup, user *entity.User, config *config.EnvConfig,
+	wg *sync.WaitGroup, config *config.EnvConfig,
 	postgresDBInstance *postgres.PostgresDB,
 	userRepository repository.UserRepository,
 	bookRepository repository.BookRepository,
 	loanRepository repository.LoanRepository,
-	sessionRedis repository.SessionRepository,
+	sessionRepository repository.SessionRepository,
 ) *fiber.App {
 
 	wg.Add(1)
 	defer wg.Done()
 
-	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config, userRepository, sessionRedis)
+	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config, userRepository, sessionRepository)
 	bookService := interfaceSvc.NewBookService(bookRepository)
-	loanService := interfaceSvc.NewLoanService(*user, bookRepository, loanRepository)
-	appInstance := rest.NewRouter(config, googleOAuth2Service, postgresDBInstance, bookService, loanService)
+	loanService := interfaceSvc.NewLoanService(bookRepository, loanRepository)
+
+	// Higher-Order Functions
+	getSessionDataFunc := func(sessionID string) (*entity.Session, *apperrors.RestErr) {
+		return sessionRepository.GetSessionData(sessionID)
+	}
+	getUserByIDFunc := func(userID int64) (*dto.UserDetail, *apperrors.RestErr) {
+		return userRepository.GetUserByID(userID)
+	}
+
+	appInstance := rest.NewRouter(
+		config, googleOAuth2Service, postgresDBInstance,
+		bookService, loanService,
+		getSessionDataFunc, getUserByIDFunc,
+	)
 
 	go func() {
 		rest.StartServer(appInstance, config.Port)
@@ -129,35 +138,4 @@ func waitForShutdown(appInstance *fiber.App, redisConn repository.DatabaseConnec
 
 	redisConn.Disconnect()
 	postgresConn.Disconnect()
-}
-
-func getDummyUserData() *entity.User {
-	url := "https://sandbox.api.myinfo.gov.sg/com/v4/person-sample/S9812381D"
-	resp, err := http.Get(url)
-	if err != nil {
-		log.Error().Msgf(apperrors.ErrMsgSomethingWentWrong)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Error().Msgf(apperrors.ErrMsgSomethingWentWrong)
-	}
-
-	var myInfoResponse entity.MyInfoResponse
-	err = json.Unmarshal(body, &myInfoResponse)
-	if err != nil {
-		log.Error().Msgf(apperrors.ErrMsgSomethingWentWrong)
-	}
-
-	currentTime := time.Now()
-	userDetail := &entity.User{
-		ID:        1,
-		Name:      myInfoResponse.Name.Value,
-		Email:     myInfoResponse.Email.Value,
-		CreatedAt: currentTime,
-		UpdatedAt: currentTime,
-	}
-
-	return userDetail
 }

@@ -26,7 +26,7 @@ type SeedRepository struct {
 	dbpool *pgxpool.Pool
 }
 
-func NewRepository(config *config.EnvConfig, dbpool *pgxpool.Pool, user *entity.User) repository.SeedRepository {
+func NewRepository(config *config.EnvConfig, dbpool *pgxpool.Pool) repository.SeedRepository {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -44,20 +44,6 @@ func NewRepository(config *config.EnvConfig, dbpool *pgxpool.Pool, user *entity.
 	}
 
 	log.Info().Msgf("successfully created the tables using %s", config.PathToSQLSchema)
-
-	const insertDummyUser = `
-		INSERT INTO users (name, email, created_at, updated_at)
-		VALUES ($1, $2, NOW(), NOW())
-		ON CONFLICT (email) DO NOTHING;  -- Skip duplicates based on email
-	`
-	_, err := dbpool.Exec(ctx, insertDummyUser, user.Name, user.Email)
-	if err != nil {
-		log.Error().Err(err).Msg("error inserting dummy user")
-		dbpool.Close()
-		return nil
-	}
-
-	log.Info().Msgf("successfully inserted dummy user %s", user.Name)
 	return &SeedRepository{config, dbpool}
 }
 
