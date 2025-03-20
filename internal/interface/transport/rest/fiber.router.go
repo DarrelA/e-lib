@@ -22,10 +22,9 @@ func StartServer(app *fiber.App, port string) {
 
 func NewRouter(
 	config *config.EnvConfig,
-	googleOAuth2Service appSvc.GoogleOAuth2Service,
-	postgresDBInstance *postgres.PostgresDB,
-	bookService appSvc.BookService,
-	loanService appSvc.LoanService,
+	googleOAuth2Service appSvc.GoogleOAuth2Service, postgresDBInstance *postgres.PostgresDB,
+	bookService appSvc.BookService, loanService appSvc.LoanService,
+	getSessionDataFunc mw.GetSessionByIDFunc, getUserByIDFunc mw.GetUserByIDFunc,
 ) *fiber.App {
 	log.Info().Msg("creating fiber instances")
 	appInstance := fiber.New()
@@ -61,6 +60,11 @@ func NewRouter(
 	/********************
 	*   LoanService   *
 	********************/
+	authMiddleware := mw.NewAuthMiddleware(getSessionDataFunc, getUserByIDFunc)
+	appInstance.Use(func(c *fiber.Ctx) error {
+		return authMiddleware.Authenticate(c)
+	})
+
 	appInstance.Post("/Borrow", loanService.BorrowBookHandler)
 	appInstance.Post("/Extend", loanService.ExtendBookLoanHandler)
 	appInstance.Post("/Return", loanService.ReturnBookHandler)

@@ -25,7 +25,8 @@ import (
 const (
 	upperCaseBookTitle = "Anna"
 	lowerCaseBookTitle = "anna"
-	user               = "User1"
+	username           = "User1"
+	userID             = 1
 )
 
 type mockSessionRepository struct{ mock.Mock }
@@ -38,11 +39,27 @@ func (m *mockSessionRepository) NewSession(userID int64) (string, *apperrors.Res
 	return args.Get(0).(string), nil
 }
 
+func (m *mockSessionRepository) GetSessionData(sessionID string) (*entity.Session, *apperrors.RestErr) {
+	args := m.Called(sessionID)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(*apperrors.RestErr)
+	}
+	return args.Get(0).(*entity.Session), nil
+}
+
 type mockUserRepository struct{ mock.Mock }
 
-func (m *mockUserRepository) GetUser(provider string, id string, email string) (int, *apperrors.RestErr) {
+func (m *mockUserRepository) GetUserByID(userID int64) (*dto.UserDetail, *apperrors.RestErr) {
+	args := m.Called(userID)
+	if args.Get(0) == nil {
+		return nil, args.Get(1).(*apperrors.RestErr)
+	}
+	return args.Get(0).(*dto.UserDetail), nil
+}
+
+func (m *mockUserRepository) GetUserID(provider string, id string, email string) (int64, *apperrors.RestErr) {
 	args := m.Called(provider, id, email)
-	user_id, ok := args.Get(0).(int)
+	user_id, ok := args.Get(0).(int64)
 	if !ok {
 		return -1, args.Get(1).(*apperrors.RestErr)
 	}
@@ -62,8 +79,8 @@ type mockBookRepository struct {
 	ExpectedBook *dto.BookDetail
 }
 
-func (m *mockBookRepository) GetBook(requestId string, title string) (*dto.BookDetail, *apperrors.RestErr) {
-	args := m.Called(requestId, strings.ToLower(title))
+func (m *mockBookRepository) GetBook(requestID string, title string) (*dto.BookDetail, *apperrors.RestErr) {
+	args := m.Called(requestID, strings.ToLower(title))
 	book, ok := args.Get(0).(*dto.BookDetail)
 	if !ok {
 		return nil, args.Get(1).(*apperrors.RestErr)
@@ -73,24 +90,24 @@ func (m *mockBookRepository) GetBook(requestId string, title string) (*dto.BookD
 
 type mockLoanRepository struct{ mock.Mock }
 
-func (m *mockLoanRepository) BorrowBook(requestId string, user entity.User, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
-	args := m.Called(requestId, user, bookDetail.UUID)
+func (m *mockLoanRepository) BorrowBook(requestID string, userDetail dto.UserDetail, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
+	args := m.Called(requestID, userDetail, bookDetail.UUID)
 	if args.Get(0) == nil {
 		return nil, args.Get(1).(*apperrors.RestErr)
 	}
 	return args.Get(0).(*dto.LoanDetail), nil
 }
 
-func (m *mockLoanRepository) ExtendBookLoan(requestId string, user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
-	args := m.Called(requestId, user_id, bookDetail)
+func (m *mockLoanRepository) ExtendBookLoan(requestID string, user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
+	args := m.Called(requestID, user_id, bookDetail)
 	if args.Get(0) == nil {
 		return nil, args.Get(1).(*apperrors.RestErr)
 	}
 	return args.Get(0).(*dto.LoanDetail), nil
 }
 
-func (m *mockLoanRepository) ReturnBook(requestId string, user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
-	args := m.Called(requestId, user_id, book_uuid)
+func (m *mockLoanRepository) ReturnBook(requestID string, user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
+	args := m.Called(requestID, user_id, book_uuid)
 	err := args.Get(0)
 	if err == nil {
 		return nil
@@ -109,14 +126,14 @@ func initializeEnv() *config.EnvConfig {
 
 func TestRoutes(t *testing.T) {
 	// Shared setup
-	testUser := entity.User{ID: 1, Name: user}
+	testUser := entity.User{ID: userID, Name: username}
 	bookUUID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
 	expectedBook := dto.BookDetail{UUID: bookUUID, Title: lowerCaseBookTitle, AvailableCopies: 10}
 
 	now := time.Now().UTC()
 	expectedLoan := dto.LoanDetail{
 		BookTitle:      lowerCaseBookTitle,
-		NameOfBorrower: user,
+		NameOfBorrower: username,
 		LoanDate:       now,
 		ReturnDate:     now.Add(time.Hour * 24 * 7 * 4),
 	}
@@ -124,7 +141,7 @@ func TestRoutes(t *testing.T) {
 	extendedReturnDate := now.Add(time.Hour * 24 * 7 * 3)
 	extendedLoan := dto.LoanDetail{
 		BookTitle:      lowerCaseBookTitle,
-		NameOfBorrower: user,
+		NameOfBorrower: username,
 		LoanDate:       now,
 		ReturnDate:     extendedReturnDate,
 	}
@@ -147,16 +164,30 @@ func TestRoutes(t *testing.T) {
 	googleOAuth2Service := interfaceSvc.NewGoogleOAuth2(config.OAuth2Config, mockUserRepo, mockSessionRepo)
 
 	mockBookRepo := new(mockBookRepository)
-	bookService := interfaceSvc.NewBookService(mockBookRepo)
-
 	mockLoanRepo := new(mockLoanRepository)
+
 	mockBookRepo.On("GetBook", mock.Anything, lowerCaseBookTitle).Return(&expectedBook, nil)
 	mockLoanRepo.On("BorrowBook", mock.Anything, testUser, bookUUID).Return(&expectedLoan, nil)
 	mockLoanRepo.On("ExtendBookLoan", mock.Anything, testUser.ID, &expectedBook).Return(&extendedLoan, nil)
 	mockLoanRepo.On("ReturnBook", mock.Anything, testUser.ID, bookUUID).Return(nil, nil)
 
-	loanService := interfaceSvc.NewLoanService(testUser, mockBookRepo, mockLoanRepo)
-	app := NewRouter(config, googleOAuth2Service, postgresDBInstance, bookService, loanService)
+	bookService := interfaceSvc.NewBookService(mockBookRepo)
+	loanService := interfaceSvc.NewLoanService(mockBookRepo, mockLoanRepo)
+
+	mockGetSessionDataFunc := func(sessionID string) (*entity.Session, *apperrors.RestErr) {
+		sessionData := &entity.Session{UserID: userID, CreatedAt: time.Now().UTC()}
+		return sessionData, nil
+	}
+	mockGetUserByIDFunc := func(userID int64) (*dto.UserDetail, *apperrors.RestErr) {
+		userDetail := &dto.UserDetail{ID: userID, Name: username}
+		return userDetail, nil
+	}
+
+	app := NewRouter(
+		config, googleOAuth2Service, postgresDBInstance,
+		bookService, loanService,
+		mockGetSessionDataFunc, mockGetUserByIDFunc,
+	)
 
 	t.Run("GetBookByTitle", func(t *testing.T) {
 		tests := []struct {

@@ -2,6 +2,7 @@ package redis
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -51,4 +52,27 @@ func (sr SessionRepository) NewSession(userID int64) (string, *apperrors.RestErr
 	}
 
 	return sessionID, nil
+}
+
+func (r *SessionRepository) GetSessionData(sessionID string) (*entity.Session, *apperrors.RestErr) {
+	ctx := context.Background()
+	key := "session:" + sessionID
+
+	sessionDataString, err := r.redisClient.Get(ctx, key).Result()
+	if err == redis.Nil {
+		log.Error().Err(err).Msg("")
+		return nil, apperrors.NewInternalServerError("session not found")
+	} else if err != nil {
+		log.Error().Err(err).Msg("")
+		return nil, apperrors.NewInternalServerError("please login again")
+	}
+
+	var sessionData entity.Session
+	err = json.Unmarshal([]byte(sessionDataString), &sessionData)
+	if err != nil {
+		log.Error().Err(err).Msg("failed to unmarshal session data")
+		return nil, apperrors.NewInternalServerError("please login again")
+	}
+
+	return &sessionData, nil
 }
