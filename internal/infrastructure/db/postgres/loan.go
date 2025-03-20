@@ -27,14 +27,14 @@ func NewLoanRepository(dbpool *pgxpool.Pool) repository.LoanRepository {
 	return &LoanRepository{dbpool}
 }
 
-func (lr LoanRepository) BorrowBook(requestId string, user entity.User, bookDetail *dto.BookDetail) (
+func (lr LoanRepository) BorrowBook(requestID string, userDetail dto.UserDetail, bookDetail *dto.BookDetail) (
 	*dto.LoanDetail, *apperrors.RestErr) {
 
 	var existingLoanCount int
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	ctx = context.WithValue(ctx, entity.RequestIdKey, requestId)
+	ctx = context.WithValue(ctx, entity.RequestIDKey, requestID)
 
 	tx, err := lr.dbpool.Begin(ctx)
 	if err != nil {
@@ -56,7 +56,7 @@ func (lr LoanRepository) BorrowBook(requestId string, user entity.User, bookDeta
 	}()
 
 	const queryCheckExistingLoan = "SELECT COUNT(*) FROM loans WHERE user_id = $1 AND book_uuid = $2 AND is_returned = FALSE"
-	err = tx.QueryRow(ctx, queryCheckExistingLoan, user.ID, bookDetail.UUID).Scan(&existingLoanCount)
+	err = tx.QueryRow(ctx, queryCheckExistingLoan, userDetail.ID, bookDetail.UUID).Scan(&existingLoanCount)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			existingLoanCount = 0
@@ -95,7 +95,7 @@ func (lr LoanRepository) BorrowBook(requestId string, user entity.User, bookDeta
 		returning name_of_borrower, loan_date, return_date
 	`
 	loanDetail := &dto.LoanDetail{BookTitle: bookDetail.Title}
-	err = tx.QueryRow(ctx, queryInsertLoan, user.ID, bookDetail.UUID, user.Name).
+	err = tx.QueryRow(ctx, queryInsertLoan, userDetail.ID, bookDetail.UUID, userDetail.Name).
 		Scan(&loanDetail.NameOfBorrower, &loanDetail.LoanDate, &loanDetail.ReturnDate)
 
 	if err != nil {
@@ -117,13 +117,13 @@ func (lr LoanRepository) BorrowBook(requestId string, user entity.User, bookDeta
 	return loanDetail, nil
 }
 
-func (lr LoanRepository) ExtendBookLoan(requestId string, user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
+func (lr LoanRepository) ExtendBookLoan(requestID string, user_id int64, bookDetail *dto.BookDetail) (*dto.LoanDetail, *apperrors.RestErr) {
 	loanDetail := &dto.LoanDetail{BookTitle: bookDetail.Title}
 	var isExtended bool
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	ctx = context.WithValue(ctx, entity.RequestIdKey, requestId)
+	ctx = context.WithValue(ctx, entity.RequestIDKey, requestID)
 
 	tx, err := lr.dbpool.Begin(ctx)
 	if err != nil {
@@ -205,12 +205,12 @@ func (lr LoanRepository) ExtendBookLoan(requestId string, user_id int64, bookDet
 	return loanDetail, nil
 }
 
-func (lr LoanRepository) ReturnBook(requestId string, user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
-	var loanId uuid.UUID
+func (lr LoanRepository) ReturnBook(requestID string, user_id int64, book_uuid uuid.UUID) *apperrors.RestErr {
+	var loanID uuid.UUID
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	ctx = context.WithValue(ctx, entity.RequestIdKey, requestId)
+	ctx = context.WithValue(ctx, entity.RequestIDKey, requestID)
 
 	tx, err := lr.dbpool.Begin(ctx)
 	if err != nil {
@@ -232,7 +232,7 @@ func (lr LoanRepository) ReturnBook(requestId string, user_id int64, book_uuid u
 	}()
 
 	const queryLoanID = "SELECT uuid FROM loans WHERE user_id = $1 AND book_uuid = $2 AND is_returned = FALSE"
-	err = tx.QueryRow(ctx, queryLoanID, user_id, book_uuid).Scan(&loanId)
+	err = tx.QueryRow(ctx, queryLoanID, user_id, book_uuid).Scan(&loanID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			log.Error().Err(err).Msg(errMsgNoActiveLoan)
@@ -251,7 +251,7 @@ func (lr LoanRepository) ReturnBook(requestId string, user_id int64, book_uuid u
 	}
 
 	const execSetIsReturned = "UPDATE loans SET is_returned = TRUE WHERE uuid = $1 AND is_returned = FALSE"
-	_, err = tx.Exec(ctx, execSetIsReturned, loanId)
+	_, err = tx.Exec(ctx, execSetIsReturned, loanID)
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to set is_returned")
 		rErr := apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)

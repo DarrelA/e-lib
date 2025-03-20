@@ -17,6 +17,6 @@ type JsonFileRepository interface {
 		*entity.Loan, *apperrors.RestErr)
 
 	GetLoanStatus(loanDetails []*entity.Loan, loanID uuid.UUID) (bool, bool)
-	FindLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (*uuid.UUID, *apperrors.RestErr)
+	FindLoanID(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (*uuid.UUID, *apperrors.RestErr)
 	SetIsReturned(loanDetails []*entity.Loan, loanID uuid.UUID) *apperrors.RestErr
 }

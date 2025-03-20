@@ -168,7 +168,7 @@ func (js JsonFileService) GetLoanStatus(loanDetails []*entity.Loan, loanID uuid.
 	return false, false
 }
 
-func (js JsonFileService) FindLoanId(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (*uuid.UUID, *apperrors.RestErr) {
+func (js JsonFileService) FindLoanID(loanDetails []*entity.Loan, bookDetail *dto.BookDetail, userID int64) (*uuid.UUID, *apperrors.RestErr) {
 	var loanID *uuid.UUID
 	found := false
 	for _, loan := range loanDetails {

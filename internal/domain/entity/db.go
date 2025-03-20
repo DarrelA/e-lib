@@ -1,11 +1,11 @@
 package entity
 
-type requestIdKey string
+type requestIDKey string
 
 // Export variable with private name, only have the key
-const RequestIdKey requestIdKey = "requestId"
+const RequestIDKey requestIDKey = "requestID"
 
-func (b requestIdKey) UseValue(use string) string {
+func (b requestIDKey) UseValue(use string) string {
 	if use == string(b) {
 		return ""
 	}

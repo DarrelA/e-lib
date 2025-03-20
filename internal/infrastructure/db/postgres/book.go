@@ -22,12 +22,12 @@ func NewBookRepository(dbpool *pgxpool.Pool) repository.BookRepository {
 	return &BookRepository{dbpool}
 }
 
-func (br BookRepository) GetBook(requestId string, title string) (*dto.BookDetail, *apperrors.RestErr) {
+func (br BookRepository) GetBook(requestID string, title string) (*dto.BookDetail, *apperrors.RestErr) {
 	bookDetail := &dto.BookDetail{}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	ctx = context.WithValue(ctx, entity.RequestIdKey, requestId)
+	ctx = context.WithValue(ctx, entity.RequestIDKey, requestID)
 
 	const queryGetBook = "SELECT uuid, title, available_copies FROM books WHERE title=$1;"
 	err := br.dbpool.QueryRow(ctx, queryGetBook, title).

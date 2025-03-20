@@ -28,12 +28,12 @@ func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "bookTitleKey")
 	}
 
-	requestId, ok := c.Locals("requestid").(string)
+	requestID, ok := c.Locals("requestid").(string)
 	if !ok {
 		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "requestid")
 	}
 
-	bookDetail, err := bs.GetBookByTitle(requestId, bookRequest)
+	bookDetail, err := bs.GetBookByTitle(requestID, bookRequest)
 	if err != nil {
 		return c.Status(err.Status).JSON(err)
 	}
@@ -41,8 +41,8 @@ func (bs *BookService) GetBookByTitleHandler(c *fiber.Ctx) error {
 	return c.Status(fiber.StatusOK).JSON(bookDetail)
 }
 
-func (bs *BookService) GetBookByTitle(requestId string, bookRequest dto.BookRequest) (*dto.BookDetail, *apperrors.RestErr) {
-	bookDetail, err := bs.bookPGDB.GetBook(requestId, bookRequest.Title)
+func (bs *BookService) GetBookByTitle(requestID string, bookRequest dto.BookRequest) (*dto.BookDetail, *apperrors.RestErr) {
+	bookDetail, err := bs.bookPGDB.GetBook(requestID, bookRequest.Title)
 	if err != nil {
 		return nil, apperrors.NewNotFoundError(errMsgBookNotFound)
 	}

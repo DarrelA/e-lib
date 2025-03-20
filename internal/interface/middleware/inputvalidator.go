@@ -25,10 +25,10 @@ func handleValidationError(c *fiber.Ctx, err error) error {
 	errorMessages := make([]string, 0, len(validationErrors))
 
 	for _, e := range validationErrors {
-		errorMessages = append(errorMessages, fmt.Sprintf("Field %s: %s", e.Field(), e.Tag()))
+		errorMessages = append(errorMessages, fmt.Sprintf("field %s: %s", e.Field(), e.Tag()))
 	}
 
-	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("Validation failed: %v", errorMessages)})
+	return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": fmt.Sprintf("validation failed: %v", errorMessages)})
 }
 
 func InputValidator(c *fiber.Ctx) error {
@@ -45,13 +45,14 @@ func InputValidator(c *fiber.Ctx) error {
 
 	case "POST":
 		err = c.BodyParser(&bookTitle)
+
 	default:
-		return c.Status(fiber.StatusMethodNotAllowed).JSON(fiber.Map{"error": "Method not allowed"})
+		return c.Status(fiber.StatusMethodNotAllowed).JSON(fiber.Map{"message": "method not allowed"})
 	}
 
 	if err != nil {
-		log.Error().Err(err).Msg("Error parsing request body/query") // Log error for both cases
-		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"error": "Invalid request parameters"})
+		log.Error().Err(err).Msg("error parsing request body/query")
+		return c.Status(fiber.StatusBadRequest).JSON(fiber.Map{"message": "invalid request parameters"})
 	}
 
 	if err := validateBookTitle(bookTitle); err != nil {

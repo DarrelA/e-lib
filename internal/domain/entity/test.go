@@ -3,8 +3,8 @@ package entity
 import "time"
 
 type Actual struct {
-	Id                int // Primary key
-	ExpectedId        int // Foreign key
+	ID                int // Primary key
+	ExpectedID        int // Foreign key
 	StatusCode        int
 	ReqUrlQueryString string
 	ReqBody           string

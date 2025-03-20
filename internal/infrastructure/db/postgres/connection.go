@@ -12,10 +12,7 @@ import (
 )
 
 const (
-	errMsgContextTimeout         = "context timeout occurred"
-	errMsgCreatingConnectionPool = "unable to create connection pool"
-	errMsgGreetingQuery          = "dbpool.QueryRow failed"
-
+	errMsgContextTimeout              = "context timeout occurred"
 	errMsgFailedToBeginTransaction    = "failed to begin transaction"
 	errMsgFailedToRollbackTransaction = "failed to rollback transaction"
 	errMsgFailedToCommitTransaction   = "failed to commit transaction"
@@ -57,7 +54,7 @@ func (p *PostgresDB) Connect(postgresDBConfig *entity.PostgresDBConfig) reposito
 			log.Ctx(ctx).Error().Err(err).Msg(errMsgContextTimeout)
 		}
 
-		log.Error().Err(err).Msg(errMsgCreatingConnectionPool)
+		log.Error().Err(err).Msg("unable to create connection pool")
 		panic(err)
 	}
 
@@ -68,7 +65,7 @@ func (p *PostgresDB) Connect(postgresDBConfig *entity.PostgresDBConfig) reposito
 			log.Ctx(ctx).Error().Err(err).Msg(errMsgContextTimeout)
 		}
 
-		log.Error().Err(err).Msg(errMsgGreetingQuery)
+		log.Error().Err(err).Msg("dbpool.QueryRow failed")
 		panic(err)
 	}
 

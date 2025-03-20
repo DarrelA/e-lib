@@ -127,7 +127,7 @@ func (oa GoogleOAuth2) Callback(c *fiber.Ctx) error {
 }
 
 func (oa GoogleOAuth2) SaveUserToRDBMS(user *dto.GoogleOAuth2UserRes) (int64, *apperrors.RestErr) {
-	user_id, dbErr := oa.userPGDB.GetUser("google", user.ID, user.Email)
+	user_id, dbErr := oa.userPGDB.GetUserID("google", user.ID, user.Email)
 	if dbErr != nil {
 		return -1, apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
 	}
