@@ -48,9 +48,6 @@ func NewRouter(
 	*       e-Lib       *
 	********************/
 	appInstance.Use(mw.InputValidator)
-	if config.AppEnv == "test" {
-		appInstance.Use(mw.SaveTestResToDB)
-	}
 
 	/********************
 	 *   BookService   *

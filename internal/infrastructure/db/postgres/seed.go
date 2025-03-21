@@ -16,11 +16,6 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
-const (
-	pathToSQLTestSchema              = "./config/test.schema.api_testing.sql"
-	pathToCompareTestReqAndResReport = "/root/testdata/reports/it_report.json"
-)
-
 type SeedRepository struct {
 	config *config.EnvConfig
 	dbpool *pgxpool.Pool
@@ -32,9 +27,6 @@ func NewRepository(config *config.EnvConfig, dbpool *pgxpool.Pool) repository.Se
 
 	var schemasToExecute []string
 	schemasToExecute = append(schemasToExecute, config.PathToSQLSchema)
-	if config.AppEnv == "test" {
-		schemasToExecute = append(schemasToExecute, pathToSQLTestSchema)
-	}
 
 	for _, schemaPath := range schemasToExecute {
 		if err := executeSchema(ctx, dbpool, schemaPath); err != nil {

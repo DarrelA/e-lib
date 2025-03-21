@@ -27,7 +27,6 @@ COPY deployment/scripts/integration_test.sh /root/
 COPY deployment/scripts/wrap_test_for_coverage.sh /root/
 
 COPY /config/schema.elib.sql  /root/config/
-COPY /config/test.schema.api_testing.sql  /root/config/
 
 WORKDIR /root
 RUN chmod +x *.sh
