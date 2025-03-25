@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"strconv"
+
 	"github.com/DarrelA/e-lib/internal/apperrors"
 	"github.com/DarrelA/e-lib/internal/application/dto"
 	"github.com/DarrelA/e-lib/internal/domain/entity"
@@ -37,9 +39,22 @@ func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
 		return c.Status(err.Status).JSON(err)
 	}
 
-	user, err := m.getUser(sessionData.UserID)
+	if sessionData.UserID == "" {
+		log.Error().Msg("sessionData.UserID is an empty string")
+		restErr := apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		return c.Status(restErr.Status).JSON(restErr)
+	}
+
+	userID, convErr := strconv.ParseInt(sessionData.UserID, 10, 64)
+	if convErr != nil {
+		log.Error().Err(convErr).Msg("error converting sessionData.UserID (string) to int64")
+		restErr := apperrors.NewInternalServerError(apperrors.ErrMsgSomethingWentWrong)
+		return c.Status(restErr.Status).JSON(restErr)
+	}
+
+	user, err := m.getUser(userID)
 	if err != nil {
-		log.Error().Err(err).Msg("Error getting user by ID")
+		log.Error().Err(err).Msg("error getting user by ID")
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "unauthorized: invalid user"})
 	}
 

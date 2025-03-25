@@ -1,8 +1,6 @@
 package entity
 
-import "time"
-
 type Session struct {
-	UserID    int64
-	CreatedAt time.Time
+	UserID    string `json:"userID"`
+	CreatedAt string `json:"createdAt"` // store CreatedAt as Unix timestamp string
 }

@@ -2,8 +2,8 @@ package redis
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/DarrelA/e-lib/internal/apperrors"
@@ -17,6 +17,9 @@ import (
 const (
 	sessionPrefix = "session:"
 	sessionTTL    = 24 * time.Hour // Session Time To Live
+
+	errMsgLoginAgain      = "please login again"
+	errMsgSessionNotFound = "session not found"
 )
 
 type SessionRepository struct {
@@ -32,14 +35,16 @@ func NewSessionRepository(redisClient *redis.Client) repository.SessionRepositor
 func (sr SessionRepository) NewSession(userID int64) (string, *apperrors.RestErr) {
 	sessionID := uuid.New().String()
 	sessionKey := sessionPrefix + sessionID
-	sessionData := &entity.Session{UserID: userID, CreatedAt: time.Now()}
 
-	values := map[string]interface{}{
-		"userID":    sessionData.UserID,
-		"createdAt": sessionData.CreatedAt,
+	userIDString := strconv.FormatInt(userID, 10)       // Convert int64 to string
+	createdAt := time.Now().Unix()                      // Get Unix timestamp
+	createdAtString := strconv.FormatInt(createdAt, 10) // Convert Unix timestamp to string
+	sessionData := map[string]interface{}{              // Use a map to pass values
+		"userID":    userIDString,
+		"createdAt": createdAtString,
 	}
 
-	err := sr.redisClient.HSet(sr.ctx, sessionKey, values).Err()
+	err := sr.redisClient.HSet(sr.ctx, sessionKey, sessionData).Err()
 	if err != nil {
 		log.Error().Err(err).Msg("")
 		return "", apperrors.NewInternalServerError("failed to store session in Redis")
@@ -58,21 +63,31 @@ func (r *SessionRepository) GetSessionData(sessionID string) (*entity.Session, *
 	ctx := context.Background()
 	key := "session:" + sessionID
 
-	sessionDataString, err := r.redisClient.Get(ctx, key).Result()
+	sessionDataMap, err := r.redisClient.HGetAll(ctx, key).Result() // Changed to HGetAll
 	if err == redis.Nil {
-		log.Error().Err(err).Msg("")
-		return nil, apperrors.NewInternalServerError("session not found")
+		log.Error().Err(err).Msg(errMsgSessionNotFound)
+		return nil, apperrors.NewInternalServerError(errMsgSessionNotFound)
 	} else if err != nil {
-		log.Error().Err(err).Msg("")
-		return nil, apperrors.NewInternalServerError("please login again")
+		log.Error().Err(err).Msg("failed to retrieve session data")
+		return nil, apperrors.NewInternalServerError(errMsgLoginAgain)
 	}
 
-	var sessionData entity.Session
-	err = json.Unmarshal([]byte(sessionDataString), &sessionData)
-	if err != nil {
-		log.Error().Err(err).Msg("failed to unmarshal session data")
-		return nil, apperrors.NewInternalServerError("please login again")
+	userID, ok := sessionDataMap["userID"]
+	if !ok {
+		log.Error().Msg("userID not found in session data")
+		return nil, apperrors.NewInternalServerError(errMsgLoginAgain)
 	}
 
-	return &sessionData, nil
+	createdAt, ok := sessionDataMap["createdAt"]
+	if !ok {
+		log.Error().Msg("createdAt not found in session data")
+		return nil, apperrors.NewInternalServerError(errMsgLoginAgain)
+	}
+
+	sessionData := &entity.Session{
+		UserID:    userID,
+		CreatedAt: createdAt,
+	}
+
+	return sessionData, nil
 }
