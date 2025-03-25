@@ -25,19 +25,9 @@ func NewLoanService(bookPGDB repository.BookRepository, loanPGDB repository.Loan
 }
 
 func (ls *LoanService) BorrowBookHandler(c *fiber.Ctx) error {
-	borrowBook, ok := c.Locals("bookTitleKey").(dto.BookRequest)
-	if !ok {
-		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "bookTitleKey")
-	}
-
-	requestID, ok := c.Locals("requestid").(string)
-	if !ok {
-		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "requestid")
-	}
-
-	userDetail, ok := c.Locals("userDetail").(dto.UserDetail)
-	if !ok {
-		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "userDetail")
+	borrowBook, requestID, userDetail, restErr := getContextInfo(c)
+	if restErr != nil {
+		return c.Status(restErr.Status).JSON(restErr)
 	}
 
 	loanDetail, err := ls.BorrowBook(requestID, userDetail, borrowBook)
@@ -69,19 +59,9 @@ func (ls *LoanService) BorrowBook(requestID string, userDetail dto.UserDetail, b
 }
 
 func (ls *LoanService) ExtendBookLoanHandler(c *fiber.Ctx) error {
-	borrowBook, ok := c.Locals("bookTitleKey").(dto.BookRequest)
-	if !ok {
-		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "bookTitleKey")
-	}
-
-	requestID, ok := c.Locals("requestid").(string)
-	if !ok {
-		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "requestid")
-	}
-
-	userDetail, ok := c.Locals("userDetail").(dto.UserDetail)
-	if !ok {
-		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "userDetail")
+	borrowBook, requestID, userDetail, restErr := getContextInfo(c)
+	if restErr != nil {
+		return c.Status(restErr.Status).JSON(restErr)
 	}
 
 	loanDetail, err := ls.ExtendBookLoan(requestID, userDetail.ID, borrowBook)
@@ -108,19 +88,9 @@ func (ls *LoanService) ExtendBookLoan(requestID string, userID int64, bookReques
 }
 
 func (ls *LoanService) ReturnBookHandler(c *fiber.Ctx) error {
-	borrowBook, ok := c.Locals("bookTitleKey").(dto.BookRequest)
-	if !ok {
-		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "bookTitleKey")
-	}
-
-	requestID, ok := c.Locals("requestid").(string)
-	if !ok {
-		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "requestid")
-	}
-
-	userDetail, ok := c.Locals("userDetail").(dto.UserDetail)
-	if !ok {
-		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "userDetail")
+	borrowBook, requestID, userDetail, restErr := getContextInfo(c)
+	if restErr != nil {
+		return c.Status(restErr.Status).JSON(restErr)
 	}
 
 	err := ls.ReturnBook(requestID, userDetail.ID, borrowBook)
@@ -144,4 +114,27 @@ func (ls *LoanService) ReturnBook(requestID string, userID int64, bookRequest dt
 	}
 
 	return nil
+}
+
+func getContextInfo(c *fiber.Ctx) (dto.BookRequest, string, dto.UserDetail, *apperrors.RestErr) {
+	restErr := apperrors.NewBadRequestError(apperrors.ErrMsgSomethingWentWrong)
+	borrowBook, ok := c.Locals("bookTitleKey").(dto.BookRequest)
+	if !ok {
+		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "bookTitleKey")
+		return dto.BookRequest{}, "", dto.UserDetail{}, restErr
+	}
+
+	requestID, ok := c.Locals("requestid").(string)
+	if !ok {
+		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "requestid")
+		return dto.BookRequest{}, "", dto.UserDetail{}, restErr
+	}
+
+	userDetail, ok := c.Locals("userDetail").(dto.UserDetail)
+	if !ok {
+		log.Error().Msgf(errMsgNotFoundOrIncorrectType, "userDetail")
+		return dto.BookRequest{}, "", dto.UserDetail{}, restErr
+	}
+
+	return borrowBook, requestID, userDetail, nil
 }
