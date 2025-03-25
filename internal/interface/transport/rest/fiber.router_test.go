@@ -128,6 +128,7 @@ func initializeEnv() *config.EnvConfig {
 func TestRoutes(t *testing.T) {
 	// Shared setup
 	testUser := entity.User{ID: userID, Name: username}
+	testUserDetail := dto.UserDetail{ID: userID, Name: username}
 	bookUUID := uuid.MustParse("123e4567-e89b-12d3-a456-426614174000")
 	expectedBook := dto.BookDetail{UUID: bookUUID, Title: lowerCaseBookTitle, AvailableCopies: 10}
 
@@ -168,7 +169,7 @@ func TestRoutes(t *testing.T) {
 	mockLoanRepo := new(mockLoanRepository)
 
 	mockBookRepo.On("GetBook", mock.Anything, lowerCaseBookTitle).Return(&expectedBook, nil)
-	mockLoanRepo.On("BorrowBook", mock.Anything, testUser, bookUUID).Return(&expectedLoan, nil)
+	mockLoanRepo.On("BorrowBook", mock.Anything, testUserDetail, bookUUID).Return(&expectedLoan, nil)
 	mockLoanRepo.On("ExtendBookLoan", mock.Anything, testUser.ID, &expectedBook).Return(&extendedLoan, nil)
 	mockLoanRepo.On("ReturnBook", mock.Anything, testUser.ID, bookUUID).Return(nil, nil)
 

@@ -30,7 +30,7 @@ dev:
 
 # Unit Test
 test:
-	@go test ./internal/interface/transport/rest
+	APP_ENV=test go test ./internal/interface/transport/rest
 
 # Integration Test
 # Depends on: deployment/docker-compose.integration.yml
