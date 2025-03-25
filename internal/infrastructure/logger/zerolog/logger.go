@@ -17,7 +17,16 @@ type ZeroLogger struct{}
 
 func NewZeroLogger(logFile *os.File) *ZeroLogger {
 	zerolog.CallerMarshalFunc = func(pc uintptr, file string, line int) string {
-		return filepath.Base(file) + ":" + strconv.Itoa(line)
+		baseFile := filepath.Base(file)
+		dir := filepath.Dir(file)
+
+		// Handle the case where the file is in the root directory
+		if dir == "." || dir == "" || dir == "/" {
+			return baseFile + ":" + strconv.Itoa(line)
+		}
+
+		parentFolder := filepath.Base(dir)
+		return parentFolder + "/" + baseFile + ":" + strconv.Itoa(line)
 	}
 
 	// Configure logger to write to both file and console
