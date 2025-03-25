@@ -85,6 +85,8 @@ Refer to `Makefile` for all the commands.
 
 # Integration Test
 
+Mocking Google OAuth2 in our integration tests allows us to rigorously validate how our backend handles user profile retrieval for seamless session management. By simulating scenarios like service unavailability or incomplete data, we ensure reliable testing of our logic without external dependencies that introduce unpredictability. This approach accelerates test cycles, reduces maintenance costs tied to third-party changes, and safeguards against disruptions in our development workflow. It complements broader validations by isolating critical authentication paths, ensuring we focus engineering effort where it matters most while maintaining confidence in system-wide integrity.
+
 ## Test Cases
 
 - [e-lib-test-cases spreadsheet](https://docs.google.com/spreadsheets/d/1qSSr5BKv9U1xnTNzGl7a-ubbvUVa_WLRL3-GkoI4g54/edit?usp=sharing)

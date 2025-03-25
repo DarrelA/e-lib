@@ -103,16 +103,24 @@ func initializeServer(
 	loanService := interfaceSvc.NewLoanService(bookRepository, loanRepository)
 
 	// Higher-Order Functions
+	newSessionFunc := func(userID int64) (string, *apperrors.RestErr) {
+		return sessionRepository.NewSession(userID)
+	}
+	saveUserFunc := func(user *dto.GoogleOAuth2UserRes, provider string) (*entity.User, *apperrors.RestErr) {
+		return userRepository.SaveUser(user, provider)
+	}
+
 	getSessionDataFunc := func(sessionID string) (*entity.Session, *apperrors.RestErr) {
 		return sessionRepository.GetSessionData(sessionID)
 	}
-	getUserByIDFunc := func(userID int64) (*dto.UserDetail, *apperrors.RestErr) {
+	getUserByIDFunc := func(userID int64) (dto.UserDetail, *apperrors.RestErr) {
 		return userRepository.GetUserByID(userID)
 	}
 
 	appInstance := rest.NewRouter(
 		config, googleOAuth2Service, postgresDBInstance,
 		bookService, loanService,
+		newSessionFunc, saveUserFunc,
 		getSessionDataFunc, getUserByIDFunc,
 	)
 

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -49,12 +50,12 @@ func (m *mockSessionRepository) GetSessionData(sessionID string) (*entity.Sessio
 
 type mockUserRepository struct{ mock.Mock }
 
-func (m *mockUserRepository) GetUserByID(userID int64) (*dto.UserDetail, *apperrors.RestErr) {
+func (m *mockUserRepository) GetUserByID(userID int64) (dto.UserDetail, *apperrors.RestErr) {
 	args := m.Called(userID)
 	if args.Get(0) == nil {
-		return nil, args.Get(1).(*apperrors.RestErr)
+		return dto.UserDetail{}, args.Get(1).(*apperrors.RestErr)
 	}
-	return args.Get(0).(*dto.UserDetail), nil
+	return args.Get(0).(dto.UserDetail), nil
 }
 
 func (m *mockUserRepository) GetUserID(provider string, id string, email string) (int64, *apperrors.RestErr) {
@@ -174,18 +175,33 @@ func TestRoutes(t *testing.T) {
 	bookService := interfaceSvc.NewBookService(mockBookRepo)
 	loanService := interfaceSvc.NewLoanService(mockBookRepo, mockLoanRepo)
 
+	mockNewSessionFunc := func(userID int64) (string, *apperrors.RestErr) {
+		sessionID := "dummy_id"
+		return sessionID, nil
+	}
+
+	mockSaveUserFunc := func(user *dto.GoogleOAuth2UserRes, provider string) (*entity.User, *apperrors.RestErr) {
+		libUser := &entity.User{ID: userID, Name: username}
+		return libUser, nil
+	}
+
 	mockGetSessionDataFunc := func(sessionID string) (*entity.Session, *apperrors.RestErr) {
-		sessionData := &entity.Session{UserID: userID, CreatedAt: time.Now().UTC()}
+		userIDString := strconv.FormatInt(userID, 10)       // Convert int64 to string
+		createdAt := time.Now().Unix()                      // Get Unix timestamp
+		createdAtString := strconv.FormatInt(createdAt, 10) // Convert Unix timestamp to string
+		sessionData := &entity.Session{UserID: userIDString, CreatedAt: createdAtString}
 		return sessionData, nil
 	}
-	mockGetUserByIDFunc := func(userID int64) (*dto.UserDetail, *apperrors.RestErr) {
-		userDetail := &dto.UserDetail{ID: userID, Name: username}
+
+	mockGetUserByIDFunc := func(userID int64) (dto.UserDetail, *apperrors.RestErr) {
+		userDetail := dto.UserDetail{ID: userID, Name: username}
 		return userDetail, nil
 	}
 
 	app := NewRouter(
 		config, googleOAuth2Service, postgresDBInstance,
 		bookService, loanService,
+		mockNewSessionFunc, mockSaveUserFunc,
 		mockGetSessionDataFunc, mockGetUserByIDFunc,
 	)
 

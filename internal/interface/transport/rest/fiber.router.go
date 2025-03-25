@@ -8,7 +8,6 @@ import (
 	mw "github.com/DarrelA/e-lib/internal/interface/middleware"
 	"github.com/gofiber/fiber/v2"
 	"github.com/gofiber/fiber/v2/middleware/requestid"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/rs/zerolog/log"
 )
 
@@ -24,13 +23,14 @@ func NewRouter(
 	config *config.EnvConfig,
 	googleOAuth2Service appSvc.GoogleOAuth2Service, postgresDBInstance *postgres.PostgresDB,
 	bookService appSvc.BookService, loanService appSvc.LoanService,
+	newSessionFunc mw.NewSessionFunc, saveUserFunc mw.SaveUserFunc,
 	getSessionDataFunc mw.GetSessionByIDFunc, getUserByIDFunc mw.GetUserByIDFunc,
 ) *fiber.App {
 	log.Info().Msg("creating fiber instances")
 	appInstance := fiber.New()
 
 	log.Info().Msg("connecting middlewares")
-	useMiddlewares(appInstance, config.AppEnv, postgresDBInstance.Dbpool)
+	useMiddlewares(appInstance, config.AppEnv)
 
 	log.Info().Msg("setting up routes")
 	appInstance.Get("/health", func(c *fiber.Ctx) error {
@@ -57,6 +57,13 @@ func NewRouter(
 	/********************
 	*   LoanService   *
 	********************/
+	if config.AppEnv == "test" {
+		mockUserSessionMiddleware := mw.NewMockUserSessionMiddleware(newSessionFunc, saveUserFunc)
+		appInstance.Use(func(c *fiber.Ctx) error {
+			return mockUserSessionMiddleware.New(c)
+		})
+	}
+
 	authMiddleware := mw.NewAuthMiddleware(getSessionDataFunc, getUserByIDFunc)
 	appInstance.Use(func(c *fiber.Ctx) error {
 		return authMiddleware.Authenticate(c)
@@ -81,10 +88,9 @@ func NewRouter(
 	return appInstance
 }
 
-func useMiddlewares(appInstance *fiber.App, appEnv string, dbpool *pgxpool.Pool) {
+func useMiddlewares(appInstance *fiber.App, appEnv string) {
 	appInstance.Use(func(c *fiber.Ctx) error {
 		c.Locals("appEnv", appEnv)
-		c.Locals("dbpool", dbpool)
 		return c.Next()
 	})
 
