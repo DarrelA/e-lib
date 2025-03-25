@@ -15,7 +15,7 @@ const (
 )
 
 type GetSessionByIDFunc func(sessionID string) (*entity.Session, *apperrors.RestErr)
-type GetUserByIDFunc func(userID int64) (*dto.UserDetail, *apperrors.RestErr)
+type GetUserByIDFunc func(userID int64) (dto.UserDetail, *apperrors.RestErr)
 
 type AuthMiddleware struct {
 	getSessionData GetSessionByIDFunc
@@ -52,12 +52,13 @@ func (m *AuthMiddleware) Authenticate(c *fiber.Ctx) error {
 		return c.Status(restErr.Status).JSON(restErr)
 	}
 
-	user, err := m.getUser(userID)
+	userDetail, err := m.getUser(userID)
 	if err != nil {
 		log.Error().Err(err).Msg("error getting user by ID")
 		return c.Status(fiber.StatusUnauthorized).JSON(fiber.Map{"message": "unauthorized: invalid user"})
 	}
 
-	c.Locals("user", user)
+	log.Debug().Msgf("Current user: %d: %s", userDetail.ID, userDetail.Name)
+	c.Locals("userDetail", userDetail)
 	return c.Next()
 }

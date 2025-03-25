@@ -23,27 +23,27 @@ func NewUserRepository(dbpool *pgxpool.Pool) repository.UserRepository {
 	return &UserRepository{dbpool}
 }
 
-func (r *UserRepository) GetUserByID(userID int64) (*dto.UserDetail, *apperrors.RestErr) {
+func (r *UserRepository) GetUserByID(userID int64) (dto.UserDetail, *apperrors.RestErr) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	query := "SELECT id, name, email FROM users WHERE id = $1"
 	row := r.dbpool.QueryRow(ctx, query, userID)
 
-	user := &dto.UserDetail{}
+	user := dto.UserDetail{}
 	err := row.Scan(&user.ID, &user.Name, &user.Email)
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			log.Ctx(ctx).Error().Msg(errMsgContextTimeout)
-			return nil, apperrors.NewInternalServerError(errMsgContextTimeout)
+			return dto.UserDetail{}, apperrors.NewInternalServerError(errMsgContextTimeout)
 		}
 
 		if err == sql.ErrNoRows {
 			log.Error().Err(err).Msg("")
-			return nil, apperrors.NewBadRequestError("user not found")
+			return dto.UserDetail{}, apperrors.NewBadRequestError("user not found")
 		}
 		log.Error().Err(err).Msg("")
-		return nil, apperrors.NewInternalServerError("failed to get user")
+		return dto.UserDetail{}, apperrors.NewInternalServerError("failed to get user")
 	}
 
 	return user, nil
